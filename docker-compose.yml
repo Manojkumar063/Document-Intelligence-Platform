@@ -1,0 +1,62 @@
+services:
+  mongodb:
+    image: mongo:7
+    container_name: rag_mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  qdrant:
+    image: qdrant/qdrant:v1.12.1
+    container_name: rag_qdrant
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - qdrant_data:/qdrant/storage
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rag_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - ./backend/.env
+    environment:
+      - MONGODB_URL=mongodb://mongodb:27017
+      - QDRANT_URL=http://qdrant:6333
+    volumes:
+      - ./uploads:/app/uploads
+      - ./backend:/app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      qdrant:
+        condition: service_started
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rag_frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - VITE_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    profiles:
+      - frontend
+
+volumes:
+  mongo_data:
+  qdrant_data:

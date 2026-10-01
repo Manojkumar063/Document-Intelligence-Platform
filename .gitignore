@@ -1,0 +1,40 @@
+# Environment
+.env
+*.env
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+*.egg-info/
+dist/
+build/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Uploads (user data — never commit)
+uploads/
+
+# Node
+node_modules/
+frontend/dist/
+frontend/.vite/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Alembic
+alembic/versions/*.pyc
