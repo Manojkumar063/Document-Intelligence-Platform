@@ -39,6 +39,7 @@ class ConversationRepository:
         content: str,
         sources: list[dict] | None = None,
         collection_id: str | None = None,
+        agent_mode: str = "chat",
     ) -> Message:
         msg = Message(
             conversation_id=conversation_id,
@@ -46,6 +47,7 @@ class ConversationRepository:
             content=content,
             sources=sources or [],
             collection_id=collection_id,
+            agent_mode=agent_mode,
         )
         await self.msgs.insert_one(msg.to_doc())
         await self.convs.update_one(

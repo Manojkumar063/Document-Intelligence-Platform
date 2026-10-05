@@ -12,7 +12,7 @@ import {
   renameConversation,
   sendMessage,
 } from "../api/client";
-import type { Collection, Conversation, Message, SourceReference } from "../types";
+import type { AgentMode, Collection, Conversation, Message, SourceReference } from "../types";
 
 function groupHistory(conversations: Conversation[], query: string) {
   const today = new Date();
@@ -76,6 +76,7 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
+  const [agentMode, setAgentMode] = useState<AgentMode>("chat");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -177,7 +178,7 @@ export default function ChatPage() {
     setInput("");
     setSending(true);
     try {
-      const res = await sendMessage(conversationId, question, selectedCollectionId || undefined);
+      const res = await sendMessage(conversationId, question, selectedCollectionId || undefined, agentMode);
       if (selectionRef.current === selection) setMessages((m) => [...m, res.data.message]);
       setConversations((current) => {
         const conversation = current.find((item) => item.id === conversationId);
@@ -461,12 +462,20 @@ export default function ChatPage() {
                     >
                       {msg.content}
                     </div>
+                    {msg.role === "assistant" && msg.agent_mode === "research" && (
+                      <span className="px-1 text-[10px] font-medium uppercase tracking-wide text-emerald-400">
+                        Research agent
+                      </span>
+                    )}
                     {msg.sources && msg.sources.length > 0 && (
                       <div className="w-full space-y-2">
-                        {msg.sources.map((source) => (
+                        {msg.sources.map((source, index) => (
                           <article key={source.chunk_id} className="max-w-xl rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-3">
                             <div className="flex items-center justify-between gap-3">
-                              <p className="min-w-0 truncate text-xs font-semibold text-slate-200">{source.filename}</p>
+                              <p className="min-w-0 truncate text-xs font-semibold text-slate-200">
+                                <span className="mr-2 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-indigo-300">[{index + 1}]</span>
+                                {source.filename}
+                              </p>
                               {source.page != null && <span className="shrink-0 text-[11px] text-slate-500">Page {source.page}</span>}
                             </div>
                             {source.snippet && <blockquote className="mt-2 line-clamp-4 border-l-2 border-indigo-500/70 pl-3 text-xs leading-relaxed text-slate-400">“{source.snippet}”</blockquote>}
@@ -510,17 +519,31 @@ export default function ChatPage() {
         {/* Input */}
         {activeId && (
           <div className="px-6 py-4 border-t border-slate-700/60 bg-slate-900/50 backdrop-blur">
-            <label className="mb-2 flex items-center gap-2 text-xs text-slate-500">
-              Search scope
-              <select
-                value={selectedCollectionId}
-                onChange={(event) => setSelectedCollectionId(event.target.value)}
-                className="max-w-[240px] rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
-              >
-                <option value="">All available documents</option>
-                {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
-              </select>
-            </label>
+            <div className="mb-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
+              <label className="flex items-center gap-2">
+                Search scope
+                <select
+                  value={selectedCollectionId}
+                  onChange={(event) => setSelectedCollectionId(event.target.value)}
+                  className="max-w-[240px] rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
+                >
+                  <option value="">All available documents</option>
+                  {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
+                </select>
+              </label>
+              <label className="flex items-center gap-2">
+                Answer mode
+                <select
+                  value={agentMode}
+                  onChange={(event) => setAgentMode(event.target.value as AgentMode)}
+                  className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
+                >
+                  <option value="chat">Quick answer</option>
+                  <option value="research">Research agent</option>
+                </select>
+              </label>
+              {agentMode === "research" && <span className="text-slate-600">Plans searches, compares evidence, and cites sources.</span>}
+            </div>
             <div className="flex items-end gap-3 bg-slate-800 border border-slate-700 rounded-xl px-4 py-3 focus-within:border-indigo-500 transition-colors">
               <textarea
                 ref={inputRef}

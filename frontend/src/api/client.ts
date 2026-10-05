@@ -1,5 +1,5 @@
 import axios from "axios";
-import type { AdminStats, AppNotification, Collection, CollectionDetail, Conversation, Document, DocumentVersion, Message, NotificationList, SourceReference, User, UserRole } from "../types";
+import type { AdminStats, AgentMode, AppNotification, Collection, CollectionDetail, Conversation, Document, DocumentVersion, Message, NotificationList, SourceReference, User, UserRole } from "../types";
 
 const api = axios.create({ baseURL: "http://localhost:8000/api/v1" });
 
@@ -83,10 +83,10 @@ export const getConversation = (id: string) =>
 export const renameConversation = (id: string, title: string) =>
   api.patch<Conversation>(`/conversations/${encodeURIComponent(id)}`, { title });
 
-export const sendMessage = (conv_id: string, message: string, collection_id?: string) =>
+export const sendMessage = (conv_id: string, message: string, collection_id?: string, agent_mode: AgentMode = "chat") =>
   api.post<{ conversation_id: string; message: Message; sources: SourceReference[] }>(
     `/conversations/${conv_id}/messages`,
-    { message, collection_id }
+    { message, collection_id, agent_mode }
   );
 
 export const regenerateMessage = (conversationId: string, messageId: string) =>

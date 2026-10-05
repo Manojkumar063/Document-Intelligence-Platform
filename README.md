@@ -82,6 +82,10 @@ By default, uploads are stored in the local `uploads/` directory. To use S3:
 
 The bucket is private; files are returned through the authenticated backend API and are not exposed as public URLs.
 
+## Research agent
+
+In chat, select **Research agent** under **Answer mode** to make the backend plan up to two focused follow-up searches, retrieve evidence from the same authorized Qdrant scope, deduplicate and rerank passages, then synthesize an answer with inline source-number citations. The normal **Quick answer** mode remains the default. The selected mode is saved with assistant messages so regenerating an answer uses the same mode.
+
 ## Project Structure
 
 ```

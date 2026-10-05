@@ -1,4 +1,5 @@
 export type UserRole = "user" | "admin";
+export type AgentMode = "chat" | "research";
 
 export interface User {
   id: string;
@@ -83,6 +84,7 @@ export interface Message {
   content: string;
   created_at: string;
   collection_id?: string | null;
+  agent_mode?: AgentMode;
   feedback?: "up" | "down" | null;
   sources?: SourceReference[];
 }

@@ -1,3 +1,5 @@
+from typing import Literal
+
 from fastapi import APIRouter
 
 from app.api.deps import CurrentUserID, DBSession
@@ -25,13 +27,21 @@ async def _generate_answer(
     collection_id: str | None,
     user_id: str,
     db: DBSession,
+    agent_mode: Literal["chat", "research"] = "chat",
 ) -> tuple[str, list[SourceReference]]:
-    result = await run_rag(
-        question=question,
-        db=db,
-        user_id=user_id,
-        collection_id=collection_id,
-    )
+    if agent_mode == "research":
+        from app.rag.workflows import run_research
+
+        result = await run_research(
+            question=question, db=db, user_id=user_id, collection_id=collection_id
+        )
+    else:
+        result = await run_rag(
+            question=question,
+            db=db,
+            user_id=user_id,
+            collection_id=collection_id,
+        )
     await UsageRepository(db).record(user_id, "chat_query")
     sources = [
         SourceReference(
@@ -104,7 +114,9 @@ async def chat(
         content=body.message,
         collection_id=body.collection_id,
     )
-    answer, sources = await _generate_answer(body.message, body.collection_id, user_id, db)
+    answer, sources = await _generate_answer(
+        body.message, body.collection_id, user_id, db, body.agent_mode
+    )
 
     assistant_msg = await repo.add_message(
         conv_id,
@@ -112,6 +124,7 @@ async def chat(
         content=answer,
         sources=[s.model_dump() for s in sources],
         collection_id=body.collection_id,
+        agent_mode=body.agent_mode,
     )
 
     return ChatResponse(
@@ -139,7 +152,13 @@ async def regenerate_message(
     if previous_answer.id != message_id or previous_answer.role != "assistant" or question.role != "user":
         raise ConflictError("Only the latest assistant answer can be regenerated")
 
-    answer, sources = await _generate_answer(question.content, question.collection_id, user_id, db)
+    answer, sources = await _generate_answer(
+        question.content,
+        question.collection_id,
+        user_id,
+        db,
+        previous_answer.agent_mode,
+    )
     await repo.delete_message(conv_id, previous_answer.id)
     assistant_msg = await repo.add_message(
         conv_id,
@@ -147,6 +166,7 @@ async def regenerate_message(
         content=answer,
         sources=[source.model_dump() for source in sources],
         collection_id=question.collection_id,
+        agent_mode=previous_answer.agent_mode,
     )
     return ChatResponse(
         conversation_id=conv_id,
