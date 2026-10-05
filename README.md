@@ -63,6 +63,25 @@ pytest tests/ -v
 docker compose --profile frontend up
 ```
 
+## AWS S3 document storage
+
+By default, uploads are stored in the local `uploads/` directory. To use S3:
+
+1. In the AWS Console, create a private S3 bucket in the region you intend to use. Keep **Block all public access** enabled and leave default encryption enabled.
+2. Give the backend's IAM role (recommended) or IAM user permission to access only this bucket. The document workflow needs `s3:PutObject`, `s3:GetObject`, and `s3:DeleteObject` on `arn:aws:s3:::<bucket-name>/*`. Do not put AWS root credentials in the application.
+3. Set these values in `backend/.env`:
+
+   ```dotenv
+   STORAGE_BACKEND=s3
+   AWS_REGION=us-east-1
+   S3_BUCKET=<your-globally-unique-bucket-name>
+   ```
+
+   For local development, configure the AWS CLI profile with `aws configure` (or set `AWS_PROFILE`). In AWS, prefer assigning an IAM role to the backend. If static credentials are unavoidable, set `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` together; set `AWS_SESSION_TOKEN` when using temporary credentials.
+4. Restart the backend so it loads the new environment variables. For Docker, rebuild the backend image to install the S3 SDK: `docker compose up --build -d backend`. New uploads, versions, processing, restores, downloads, and deletes will use S3. Existing documents stored locally remain at their recorded local paths; switching the setting does not migrate them.
+
+The bucket is private; files are returned through the authenticated backend API and are not exposed as public URLs.
+
 ## Project Structure
 
 ```

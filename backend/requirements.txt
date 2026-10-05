@@ -7,6 +7,9 @@ python-multipart==0.0.12
 pydantic[email]==2.10.3
 pydantic-settings==2.6.1
 
+# AWS S3 storage
+boto3==1.35.81
+
 # MongoDB
 motor==3.6.0
 pymongo==4.9.2

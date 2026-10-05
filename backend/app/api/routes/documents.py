@@ -1,8 +1,7 @@
-from pathlib import Path
 from urllib.parse import quote
 
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File
-from fastapi.responses import FileResponse
+from fastapi.responses import Response
 
 from app.api.deps import CurrentAdminUserID, CurrentUserID, DBSession
 from app.core.config import get_settings
@@ -18,6 +17,7 @@ from app.schemas.document import (
     DocumentVersionResponse,
 )
 from app.services.document_service import DocumentService
+from app.services.storage import storage
 from app.utils.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -174,17 +174,18 @@ async def get_document(doc_id: str, user_id: CurrentUserID, db: DBSession) -> Do
 
 
 @router.get("/{doc_id}/file")
-async def open_document_file(doc_id: str, user_id: CurrentUserID, db: DBSession) -> FileResponse:
+async def open_document_file(doc_id: str, user_id: CurrentUserID, db: DBSession) -> Response:
     doc = await DocumentRepository(db).get_by_id(doc_id)
     if not doc:
         raise NotFoundError("Document", doc_id)
     user = await UserRepository(db).get_by_id(user_id)
     if not doc.is_shared and doc.user_id != user_id and (not user or user.role != "admin"):
         raise ForbiddenError()
-    if not Path(doc.file_path).is_file():
+    if not await storage.exists(doc.file_path):
         raise NotFoundError("Document file", doc_id)
-    return FileResponse(
-        doc.file_path,
+    content = await storage.read(doc.file_path)
+    return Response(
+        content=content,
         media_type=doc.mime_type,
         headers={"Content-Disposition": f"inline; filename*=UTF-8''{quote(doc.original_name)}"},
     )
@@ -192,9 +193,17 @@ async def open_document_file(doc_id: str, user_id: CurrentUserID, db: DBSession)
 
 @router.delete("/{doc_id}", status_code=204)
 async def delete_document(doc_id: str, user_id: CurrentAdminUserID, db: DBSession) -> None:
-    doc = await DocumentRepository(db).get_by_id(doc_id)
+    repo = DocumentRepository(db)
+    doc = await repo.get_by_id(doc_id)
     if not doc:
         raise NotFoundError("Document", doc_id)
+    versions = [
+        version async for version in db["document_versions"].find({"document_id": doc_id})
+    ]
+    file_locations = {doc.file_path, *(version["file_path"] for version in versions)}
+    for location in file_locations:
+        await storage.delete(location)
     await delete_document_vectors(doc_id)
     await db["documents"].delete_one({"_id": doc_id})
     await db["document_chunks"].delete_many({"document_id": doc_id})
+    await db["document_versions"].delete_many({"document_id": doc_id})

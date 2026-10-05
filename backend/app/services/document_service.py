@@ -1,11 +1,9 @@
 """Document ingestion service: save → load → chunk → embed → store."""
 import logging
 import uuid
-from pathlib import Path
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.core.config import get_settings
 from app.db.models.document import Document, DocumentStatus
 from app.db.models.chunk import DocumentChunk
 from app.db.repositories.document_repo import DocumentRepository
@@ -15,12 +13,12 @@ from app.db.vector_store import (
     set_document_vector_status,
     upsert_document_chunks,
 )
-from app.rag.loaders import load_text
+from app.rag.loaders import load_text_from_bytes
 from app.rag.chunking import split_text
 from app.rag.embeddings import embed_texts
-from app.utils.exceptions import StorageError, DocumentProcessingError
+from app.utils.exceptions import DocumentProcessingError
+from app.services.storage import storage
 
-settings = get_settings()
 logger = logging.getLogger(__name__)
 
 
@@ -42,22 +40,14 @@ class DocumentService:
         content: bytes,
         mime_type: str,
     ) -> Document:
-        upload_dir = Path(settings.upload_dir) / user_id
-        upload_dir.mkdir(parents=True, exist_ok=True)
-
         unique_name = f"{uuid.uuid4()}_{original_name}"
-        file_path = upload_dir / unique_name
-
-        try:
-            file_path.write_bytes(content)
-        except OSError as exc:
-            raise StorageError(f"Failed to write file: {exc}") from exc
+        file_path = await storage.save(user_id, unique_name, content, mime_type)
 
         return await self.repo.create(
             user_id=user_id,
             filename=unique_name,
             original_name=original_name,
-            file_path=str(file_path),
+            file_path=file_path,
             file_size=len(content),
             mime_type=mime_type,
         )
@@ -69,19 +59,13 @@ class DocumentService:
         content: bytes,
         mime_type: str,
     ) -> Document:
-        upload_dir = Path(settings.upload_dir) / doc.user_id
-        upload_dir.mkdir(parents=True, exist_ok=True)
         unique_name = f"{uuid.uuid4()}_{original_name}"
-        file_path = upload_dir / unique_name
-        try:
-            file_path.write_bytes(content)
-        except OSError as exc:
-            raise StorageError(f"Failed to write file: {exc}") from exc
+        file_path = await storage.save(doc.user_id, unique_name, content, mime_type)
         return await self.repo.replace_current_file(
             doc,
             filename=unique_name,
             original_name=original_name,
-            file_path=str(file_path),
+            file_path=file_path,
             file_size=len(content),
             mime_type=mime_type,
         )
@@ -90,7 +74,7 @@ class DocumentService:
         snapshot = await self.db["document_versions"].find_one(
             {"document_id": doc.id, "version": version}
         )
-        if not snapshot or not Path(snapshot["file_path"]).is_file():
+        if not snapshot or not await storage.exists(snapshot["file_path"]):
             return None
         return await self.repo.restore_version(doc, snapshot)
 
@@ -101,7 +85,8 @@ class DocumentService:
             await set_document_vector_status(doc.id, DocumentStatus.PROCESSING)
             await delete_document_vectors(doc.id)
             await self.db["document_chunks"].delete_many({"document_id": doc.id})
-            text = load_text(doc.file_path)
+            content = await storage.read(doc.file_path)
+            text = load_text_from_bytes(content, doc.original_name)
             chunks = split_text(text)
 
             if not chunks:
