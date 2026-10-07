@@ -24,8 +24,10 @@ uploads/
 
 # Node
 node_modules/
-frontend/dist/
-frontend/.vite/
+apps/frontend/dist/
+apps/frontend/.vite/
+apps/workspace-ui/dist/
+apps/workspace-ui/.vite/
 
 # IDE
 .vscode/
