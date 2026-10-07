@@ -1,12 +1,19 @@
 import hashlib
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Any
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.utils.exceptions import ConflictError, ForbiddenError, NotFoundError
+
+
+def _mongo_date(value: date | None) -> datetime | None:
+    if value is None:
+        return None
+    return datetime(value.year, value.month, value.day, tzinfo=timezone.utc)
+
 
 class WorkspaceRepository:
     PROJECT_COLORS = ("lilac", "mint", "peach")
@@ -248,7 +255,7 @@ class WorkspaceRepository:
             "name": values["name"],
             "description": values.get("description", ""),
             "status": values.get("status", "Planning"),
-            "due_date": values.get("due_date"),
+            "due_date": _mongo_date(values.get("due_date")),
             "color": self.PROJECT_COLORS[
                 await self.projects.count_documents({"workspace_id": workspace["_id"]}) % len(self.PROJECT_COLORS)
             ],
@@ -263,6 +270,8 @@ class WorkspaceRepository:
         workspace, _ = await self._active_workspace(user_id)
         if not values:
             return await self.get_project(project_id, user_id)
+        if "due_date" in values:
+            values["due_date"] = _mongo_date(values["due_date"])
         await self.projects.update_one(
             {"_id": project_id, "workspace_id": workspace["_id"]}, {"$set": values}
         )
@@ -306,7 +315,7 @@ class WorkspaceRepository:
             "created_by": user_id,
             "title": values["title"],
             "project_id": values["project_id"],
-            "due_date": values.get("due_date"),
+            "due_date": _mongo_date(values.get("due_date")),
             "done": False,
             "assignee_id": values.get("assignee_id"),
             "created_at": datetime.now(timezone.utc),
@@ -328,6 +337,8 @@ class WorkspaceRepository:
             {"workspace_id": workspace["_id"], "user_id": values["assignee_id"]}
         ):
             raise NotFoundError("Workspace member", values["assignee_id"])
+        if "due_date" in values:
+            values["due_date"] = _mongo_date(values["due_date"])
         await self.tasks.update_one(
             {"_id": task_id, "workspace_id": workspace["_id"]}, {"$set": values}
         )

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime, timezone
 from typing import Any
 
 import pytest
@@ -238,6 +238,9 @@ async def test_workspace_crud_and_project_task_cascade() -> None:
     )
     assert project.name == "Launch"
     assert project.description == "First release"
+    stored_project = await db["workspace_projects"].find_one({"_id": project.id})
+    assert stored_project is not None
+    assert stored_project["due_date"] == datetime(2026, 10, 18, tzinfo=timezone.utc)
 
     empty_description_project = await create_project(
         ProjectCreate(name="Minimal project", description=""), "user-one", db  # type: ignore[arg-type]
@@ -251,15 +254,28 @@ async def test_workspace_crud_and_project_task_cascade() -> None:
     )
     assert task.done is False
     assert task.due_date == date(2026, 10, 12)
+    stored_task = await db["workspace_tasks"].find_one({"_id": task.id})
+    assert stored_task is not None
+    assert stored_task["due_date"] == datetime(2026, 10, 12, tzinfo=timezone.utc)
 
     updated_task = await update_task(
-        task.id, TaskUpdate(done=True), "user-one", db  # type: ignore[arg-type]
+        task.id, TaskUpdate(done=True, due_date=date(2026, 10, 13)), "user-one", db  # type: ignore[arg-type]
     )
     updated_project = await update_project(
-        project.id, ProjectUpdate(status="In Progress"), "user-one", db  # type: ignore[arg-type]
+        project.id,
+        ProjectUpdate(status="In Progress", due_date=date(2026, 10, 19)),
+        "user-one",
+        db,  # type: ignore[arg-type]
     )
     assert updated_task.done is True
+    assert updated_task.due_date == date(2026, 10, 13)
     assert updated_project.status == "In Progress"
+    stored_task = await db["workspace_tasks"].find_one({"_id": task.id})
+    assert stored_task is not None
+    assert stored_task["due_date"] == datetime(2026, 10, 13, tzinfo=timezone.utc)
+    stored_project = await db["workspace_projects"].find_one({"_id": project.id})
+    assert stored_project is not None
+    assert stored_project["due_date"] == datetime(2026, 10, 19, tzinfo=timezone.utc)
 
     await delete_project(project.id, "user-one", db)  # type: ignore[arg-type]
     await delete_project(empty_description_project.id, "user-one", db)  # type: ignore[arg-type]
