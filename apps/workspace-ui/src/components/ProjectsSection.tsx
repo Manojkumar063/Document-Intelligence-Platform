@@ -1,6 +1,13 @@
 import Icon from "./Icon";
 import type { Project, Task, NavItem } from "../types";
 
+const STATUS_CLASS: Record<string, string> = {
+  "Planning": "status-planning",
+  "In Progress": "status-inprogress",
+  "Completed": "status-completed",
+  "On Hold": "status-onhold",
+};
+
 interface Props {
   projects: Project[];
   tasks: Task[];
@@ -24,9 +31,12 @@ export default function ProjectsSection({ projects, tasks, onViewAll, onAddProje
             <article className={`project-card card-${project.color}`} key={project.id}>
               <div className="project-card-top">
                 <div className={`project-symbol ${project.color}`}>{["✳", "◒", "⌘"][index % 3]}</div>
-                <button type="button" className="icon-button subtle" aria-label={`More options for ${project.name}`}>
-                  <Icon name="more" />
-                </button>
+                <div className="project-card-top-right">
+                  <span className={`status-badge ${STATUS_CLASS[project.status]}`}>{project.status}</span>
+                  <button type="button" className="icon-button subtle" aria-label={`More options for ${project.name}`}>
+                    <Icon name="more" />
+                  </button>
+                </div>
               </div>
               <h3>{project.name}</h3>
               <p className="project-description">{project.description}</p>

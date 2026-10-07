@@ -1,15 +1,22 @@
+import { useRef, useState } from "react";
 import Icon from "./Icon";
 import { userInitials } from "../api";
-import type { User, NavItem } from "../types";
+import type { User, NavItem, Notification } from "../types";
 
 interface Props {
   user: User;
   activeNav: NavItem;
   query: string;
   onQueryChange: (q: string) => void;
+  notifications: Notification[];
+  onMarkAllRead: () => void;
 }
 
-export default function Topbar({ user, activeNav, query, onQueryChange }: Props) {
+export default function Topbar({ user, activeNav, query, onQueryChange, notifications, onMarkAllRead }: Props) {
+  const [open, setOpen] = useState(false);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const unread = notifications.filter((n) => !n.read).length;
+
   return (
     <header className="topbar">
       <div className="breadcrumbs">
@@ -23,9 +30,40 @@ export default function Topbar({ user, activeNav, query, onQueryChange }: Props)
           <input aria-label="Search tasks" placeholder="Search anything..." value={query} onChange={(e) => onQueryChange(e.target.value)} />
           <kbd>⌘ K</kbd>
         </label>
-        <button type="button" className="icon-button notification-button" aria-label="Notifications">
-          <Icon name="bell" /><i />
-        </button>
+        <div className="notif-wrap">
+          <button
+            ref={btnRef}
+            type="button"
+            className="icon-button notification-button"
+            aria-label="Notifications"
+            aria-expanded={open}
+            onClick={() => setOpen((v) => !v)}
+          >
+            <Icon name="bell" />
+            {unread > 0 && <i className="notif-badge">{unread}</i>}
+          </button>
+          {open && (
+            <div className="notif-dropdown" role="dialog" aria-label="Notifications">
+              <div className="notif-header">
+                <span>Notifications</span>
+                {unread > 0 && (
+                  <button type="button" className="notif-mark-read" onClick={onMarkAllRead}>Mark all read</button>
+                )}
+              </div>
+              <ul className="notif-list">
+                {notifications.map((n) => (
+                  <li key={n.id} className={`notif-item ${n.read ? "notif-read" : ""}`}>
+                    <span className="notif-dot" />
+                    <div className="notif-body">
+                      <p>{n.message}</p>
+                      <span>{n.time}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
         <div className="profile-avatar top-avatar">{userInitials(user)}</div>
       </div>
     </header>
