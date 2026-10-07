@@ -1,7 +1,7 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import Icon from "./Icon";
 import { userInitials } from "../api";
-import type { User, NavItem, Project, Task } from "../types";
+import type { User, NavItem, Project, Task, WorkspaceInfo } from "../types";
 
 const ragUrl = (import.meta.env.VITE_RAG_APP_URL || "http://localhost:3000").replace(/\/$/, "");
 
@@ -13,9 +13,13 @@ interface Props {
   onNavChange: (nav: NavItem) => void;
   onAddProject: () => void;
   onLogout: () => void;
+  workspace: WorkspaceInfo;
+  onInvite: () => void;
+  onSwitchWorkspace: (id: string) => void;
 }
 
-export default function Sidebar({ user, projects, tasks, activeNav, onNavChange, onAddProject, onLogout }: Props) {
+export default function Sidebar({ user, projects, tasks, activeNav, onNavChange, onAddProject, onLogout, workspace, onInvite, onSwitchWorkspace }: Props) {
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
   const pendingCount = tasks.filter((t) => !t.done).length;
 
   const handleNav = useCallback((item: NavItem) => () => onNavChange(item), [onNavChange]);
@@ -27,11 +31,25 @@ export default function Sidebar({ user, projects, tasks, activeNav, onNavChange,
         <span>teamspace<span className="brand-period">.</span></span>
       </a>
 
-      <button className="workspace-switcher" type="button">
-        <span className="workspace-avatar">S</span>
-        <span className="workspace-name"><strong>Studio North</strong><small>Free workspace</small></span>
-        <span className="switcher-chevron">⌄</span>
-      </button>
+      <div className="workspace-switcher-wrap">
+        <button className="workspace-switcher" type="button" aria-expanded={workspaceMenuOpen} onClick={() => setWorkspaceMenuOpen((open) => !open)}>
+          <span className="workspace-avatar">{workspace.name.slice(0, 1).toUpperCase()}</span>
+          <span className="workspace-name"><strong>{workspace.name}</strong><small>{workspace.role === "owner" ? "Owner" : "Member"} · {workspace.members.length} {workspace.members.length === 1 ? "member" : "members"}</small></span>
+          <span className="switcher-chevron">⌄</span>
+        </button>
+        {workspaceMenuOpen && (
+          <div className="workspace-menu">
+            <p className="workspace-menu-label">YOUR WORKSPACES</p>
+            {workspace.workspaces.map((option) => (
+              <button type="button" key={option.id} className="workspace-menu-item" onClick={() => { setWorkspaceMenuOpen(false); if (option.id !== workspace.id) onSwitchWorkspace(option.id); }}>
+                <span>{option.name}</span>
+                {option.id === workspace.id && <span aria-label="Current workspace">✓</span>}
+              </button>
+            ))}
+            {workspace.role === "owner" && <button type="button" className="workspace-menu-invite" onClick={() => { setWorkspaceMenuOpen(false); onInvite(); }}>Invite a teammate</button>}
+          </div>
+        )}
+      </div>
 
       <p className="nav-label">WORKSPACE</p>
       <nav className="primary-nav" aria-label="Main navigation">
@@ -69,7 +87,7 @@ export default function Sidebar({ user, projects, tasks, activeNav, onNavChange,
         <div className="profile-avatar">{userInitials(user)}</div>
         <div className="profile-copy">
           <strong>{user.full_name || user.email}</strong>
-          <small>{user.role === "admin" ? "Workspace admin" : user.email}</small>
+          <small>{workspace.role === "owner" ? "Workspace owner" : user.email}</small>
         </div>
         <button type="button" className="logout-button" onClick={onLogout}>Sign out</button>
       </div>

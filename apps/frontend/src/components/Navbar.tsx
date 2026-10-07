@@ -6,6 +6,8 @@ import { useTheme } from "../context/ThemeContext";
 import { GlobalSearch } from "./GlobalSearch";
 import type { AppNotification } from "../types";
 
+const workspaceUrl = (import.meta.env.VITE_WORKSPACE_URL || "http://localhost:3001").replace(/\/$/, "");
+
 export function Navbar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -71,6 +73,17 @@ export function Navbar() {
           {navLink("/collections", "Collections")}
           {user.role === "admin" && navLink("/admin/users", "Users")}
           {navLink("/chat", "Chat")}
+          <a
+            href={workspaceUrl}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-teal-500/30 px-3 py-1.5 text-sm font-medium text-teal-300 transition-colors hover:border-teal-400/50 hover:bg-teal-500/10 hover:text-teal-200"
+            aria-label="Back to Teamspace"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M10 19l-7-7 7-7M3 12h18" />
+            </svg>
+            <span className="hidden lg:inline">Back to Teamspace</span>
+            <span className="lg:hidden">Teamspace</span>
+          </a>
 
           <div className="relative">
             <button

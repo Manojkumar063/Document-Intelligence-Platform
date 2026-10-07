@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import AuthScreen from "./components/AuthScreen";
 import Workspace from "./components/Workspace";
-import { getMe, getToken, saveToken, clearToken } from "./api";
+import { getMe, getToken, clearToken, logoutSession } from "./api";
 import type { User } from "./types";
 
 export default function App() {
@@ -9,22 +9,28 @@ export default function App() {
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
+    clearToken();
     const token = getToken();
-    if (!token) { setChecking(false); return; }
-    getMe(token)
-      .then((u) => { if (u.is_active) setUser(u); else clearToken(); })
-      .catch(() => clearToken())
+    const refreshSession = () => getMe(token ?? undefined)
+      .then((u) => { if (u.is_active) setUser(u); else { clearToken(); setUser(null); } })
+      .catch(() => { clearToken(); setUser(null); })
       .finally(() => setChecking(false));
+    void refreshSession();
+    const refreshOnFocus = () => { void refreshSession(); };
+    window.addEventListener("focus", refreshOnFocus);
+    return () => window.removeEventListener("focus", refreshOnFocus);
   }, []);
 
-  function authenticate(token: string, u: User) {
-    saveToken(token);
+  function authenticate(_token: string, u: User) {
     setUser(u);
   }
 
   function logout() {
     clearToken();
     setUser(null);
+    void logoutSession().catch((error: unknown) => {
+      console.error("Could not clear the shared sign-in session", error);
+    });
   }
 
   if (checking) {

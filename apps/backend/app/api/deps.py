@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import Depends
+from fastapi import Cookie, Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
@@ -16,10 +16,12 @@ _bearer = HTTPBearer(auto_error=False)
 
 async def get_current_user_id(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    session_token: Annotated[str | None, Cookie(alias="rag_access_token")] = None,
 ) -> str:
-    if credentials is None:
+    token = session_token or (credentials.credentials if credentials else None)
+    if token is None:
         raise UnauthorizedError("Authorization header missing")
-    payload = decode_access_token(credentials.credentials)
+    payload = decode_access_token(token)
     user_id: str | None = payload.get("sub")
     if not user_id:
         raise UnauthorizedError("Token subject missing")

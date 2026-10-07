@@ -5,6 +5,7 @@ import type { User, NavItem, Notification } from "../types";
 
 interface Props {
   user: User;
+  workspaceName: string;
   activeNav: NavItem;
   query: string;
   onQueryChange: (q: string) => void;
@@ -12,7 +13,7 @@ interface Props {
   onMarkAllRead: () => void;
 }
 
-export default function Topbar({ user, activeNav, query, onQueryChange, notifications, onMarkAllRead }: Props) {
+export default function Topbar({ user, workspaceName, activeNav, query, onQueryChange, notifications, onMarkAllRead }: Props) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const unread = notifications.filter((n) => !n.read).length;
@@ -20,7 +21,7 @@ export default function Topbar({ user, activeNav, query, onQueryChange, notifica
   return (
     <header className="topbar">
       <div className="breadcrumbs">
-        <span>Studio North</span>
+        <span>{workspaceName}</span>
         <span className="crumb-separator">/</span>
         <strong>{activeNav}</strong>
       </div>

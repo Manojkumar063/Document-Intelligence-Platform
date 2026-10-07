@@ -61,7 +61,7 @@ class Settings(BaseSettings):
     s3_bucket: str = ""
 
     # CORS
-    cors_origins: list[str] = ["http://localhost:3000"]
+    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
 
     @model_validator(mode="after")
     def validate_file_storage(self) -> "Settings":
