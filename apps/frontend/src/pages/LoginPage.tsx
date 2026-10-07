@@ -1,11 +1,11 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { login } from "../api/client";
+import { login, getMe } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { AuthArtwork } from "../components/AuthArtwork";
 
 export default function LoginPage() {
-  const { setToken } = useAuth();
+  const { setUser } = useAuth();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,8 +17,11 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await login(email, password);
-      setToken(res.data.access_token);
+      // login sets the rag_access_token cookie; pass the returned token
+      // directly to getMe to avoid a race before the cookie is available.
+      const { data: { access_token } } = await login(email, password);
+      const { data: userData } = await getMe();
+      setUser(userData);
       navigate("/chat");
     } catch (err: any) {
       setError(err.response?.data?.error?.message || "Invalid email or password");

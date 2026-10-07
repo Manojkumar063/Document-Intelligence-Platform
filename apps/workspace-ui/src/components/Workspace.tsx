@@ -6,8 +6,10 @@ import {
   acceptWorkspaceInvitation,
   deleteProject,
   deleteTask,
+  getNotifications,
   getWorkspace,
   getWorkspaceData,
+  markNotificationRead,
   removeWorkspaceMember,
   switchWorkspace,
   updateProject,
@@ -41,7 +43,7 @@ export default function Workspace({ user, onLogout }: Props) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
-  const notifications: Notification[] = [];
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [activeNav, setActiveNav] = useState<NavItem>("Overview");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<TaskFilters>(emptyFilters);
@@ -50,6 +52,21 @@ export default function Workspace({ user, onLogout }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const members = workspace?.members ?? [];
+
+  useEffect(() => {
+    let mounted = true;
+    const fetchNotifications = async () => {
+      try {
+        const { items } = await getNotifications();
+        if (mounted) setNotifications(items);
+      } catch {
+        // silently ignore notification fetch errors
+      }
+    };
+    void fetchNotifications();
+    const interval = window.setInterval(() => { void fetchNotifications(); }, 30000);
+    return () => { mounted = false; window.clearInterval(interval); };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -85,6 +102,13 @@ export default function Workspace({ user, onLogout }: Props) {
       });
     return () => { cancelled = true; };
   }, []);
+
+  const markAllRead = useCallback(async () => {
+    const unread = notifications.filter((n) => !n.read);
+    if (!unread.length) return;
+    setNotifications((current) => current.map((n) => ({ ...n, read: true })));
+    await Promise.allSettled(unread.map((n) => markNotificationRead(n.id)));
+  }, [notifications]);
 
   const changeWorkspace = useCallback(async (workspaceId: string) => {
     setLoading(true);
@@ -136,8 +160,8 @@ export default function Workspace({ user, onLogout }: Props) {
 
   const saveTask = useCallback(async (payload: TaskPayload, task?: Task) => {
     const saved = task
-      ? await updateTask(undefined, task.id, payload)
-      : await createTask(undefined, payload);
+      ? await updateTask(task.id, payload)
+      : await createTask(payload);
     setTasks((previous) => task
       ? previous.map((item) => item.id === task.id ? saved : item)
       : [saved, ...previous]);
@@ -146,8 +170,8 @@ export default function Workspace({ user, onLogout }: Props) {
 
   const saveProject = useCallback(async (payload: ProjectPayload, project?: Project) => {
     const saved = project
-      ? await updateProject(undefined, project.id, payload)
-      : await createProject(undefined, payload);
+      ? await updateProject(project.id, payload)
+      : await createProject(payload);
     setProjects((previous) => project
       ? previous.map((item) => item.id === project.id ? saved : item)
       : [saved, ...previous]);
@@ -157,7 +181,7 @@ export default function Workspace({ user, onLogout }: Props) {
   const removeProject = useCallback(async (project: Project) => {
     if (!window.confirm(`Delete "${project.name}" and its tasks? This cannot be undone.`)) return;
     try {
-      await deleteProject(undefined, project.id);
+      await deleteProject(project.id);
       setProjects((previous) => previous.filter((item) => item.id !== project.id));
       setTasks((previous) => previous.filter((item) => item.projectId !== project.id));
       setError("");
@@ -169,7 +193,7 @@ export default function Workspace({ user, onLogout }: Props) {
   const removeTask = useCallback(async (task: Task) => {
     if (!window.confirm(`Delete "${task.title}"? This cannot be undone.`)) return;
     try {
-      await deleteTask(undefined, task.id);
+      await deleteTask(task.id);
       setTasks((previous) => previous.filter((item) => item.id !== task.id));
       setError("");
     } catch (err) {
@@ -181,7 +205,7 @@ export default function Workspace({ user, onLogout }: Props) {
     const task = tasks.find((item) => item.id === id);
     if (!task) return;
     try {
-      const saved = await updateTask(undefined, id, {
+      const saved = await updateTask(id, {
         title: task.title,
         project_id: task.projectId,
         due_date: task.dueDate,
@@ -232,7 +256,7 @@ export default function Workspace({ user, onLogout }: Props) {
           query={query}
           onQueryChange={setQuery}
           notifications={notifications}
-          onMarkAllRead={() => {}}
+          onMarkAllRead={() => { void markAllRead(); }}
         />
         <div className="page-content">
           <section className="welcome-row">

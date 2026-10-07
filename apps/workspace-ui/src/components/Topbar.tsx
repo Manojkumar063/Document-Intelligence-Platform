@@ -52,12 +52,16 @@ export default function Topbar({ user, workspaceName, activeNav, query, onQueryC
                 )}
               </div>
               <ul className="notif-list">
+                {notifications.length === 0 && (
+                  <li className="notif-item notif-empty">You're all caught up.</li>
+                )}
                 {notifications.map((n) => (
                   <li key={n.id} className={`notif-item ${n.read ? "notif-read" : ""}`}>
                     <span className="notif-dot" />
                     <div className="notif-body">
+                      <a href={n.href} className="notif-title" onClick={() => setOpen(false)}>{n.title}</a>
                       <p>{n.message}</p>
-                      <span>{n.time}</span>
+                      <span>{new Date(n.created_at).toLocaleString()}</span>
                     </div>
                   </li>
                 ))}
