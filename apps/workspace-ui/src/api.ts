@@ -1,6 +1,6 @@
 import type { Notification, Project, Task, User, WorkspaceInfo, WorkspaceOption } from "./types";
 
-const apiUrl = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
+const apiUrl = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/$/, "");
 
 interface APIError {
   error?: { message?: string };
