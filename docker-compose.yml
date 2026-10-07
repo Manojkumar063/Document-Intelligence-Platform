@@ -23,19 +23,19 @@ services:
 
   backend:
     build:
-      context: ./backend
+      context: ./apps/backend
       dockerfile: Dockerfile
     container_name: rag_backend
     ports:
       - "8000:8000"
     env_file:
-      - ./backend/.env
+      - ./apps/backend/.env
     environment:
       - MONGODB_URL=mongodb://mongodb:27017
       - QDRANT_URL=http://qdrant:6333
     volumes:
-      - ./uploads:/app/uploads
-      - ./backend:/app
+      - ./apps/backend/uploads:/app/uploads
+      - ./apps/backend:/app
     depends_on:
       mongodb:
         condition: service_healthy
@@ -45,13 +45,28 @@ services:
 
   frontend:
     build:
-      context: ./frontend
+      context: ./apps/frontend
       dockerfile: Dockerfile
     container_name: rag_frontend
     ports:
       - "3000:3000"
     environment:
-      - VITE_API_URL=http://localhost:8000
+      - VITE_API_URL=http://localhost:8000/api/v1
+    depends_on:
+      - backend
+    profiles:
+      - frontend
+
+  workspace-ui:
+    build:
+      context: ./apps/workspace-ui
+      dockerfile: Dockerfile
+    container_name: rag_workspace_ui
+    ports:
+      - "3001:3001"
+    environment:
+      - VITE_API_URL=http://localhost:8000/api/v1
+      - VITE_RAG_APP_URL=http://localhost:3000
     depends_on:
       - backend
     profiles:
