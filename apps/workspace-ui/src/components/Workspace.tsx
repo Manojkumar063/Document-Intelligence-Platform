@@ -6,19 +6,34 @@ import ProjectsSection from "./ProjectsSection";
 import TasksPanel from "./TasksPanel";
 import KnowledgeCard from "./KnowledgeCard";
 import Modal from "./Modal";
-import type { User, Project, Task, NavItem } from "../types";
+import type { User, Project, Task, NavItem, Member, Notification } from "../types";
 
 const startingProjects: Project[] = [
-  { id: "atlas", name: "Atlas refresh", description: "A clearer home for our customers", color: "lilac", due: "Oct 18" },
-  { id: "onboarding", name: "Team onboarding", description: "Make every first week count", color: "mint", due: "Oct 22" },
-  { id: "research", name: "Customer research", description: "Listen, learn, and build better", color: "peach", due: "Oct 29" },
+  { id: "atlas", name: "Atlas refresh", description: "A clearer home for our customers", color: "lilac", due: "Oct 18", status: "In Progress" },
+  { id: "onboarding", name: "Team onboarding", description: "Make every first week count", color: "mint", due: "Oct 22", status: "Planning" },
+  { id: "research", name: "Customer research", description: "Listen, learn, and build better", color: "peach", due: "Oct 29", status: "In Progress" },
+];
+
+export const ORG_MEMBERS: Member[] = [
+  { id: "m1", initials: "PM", name: "Priya M.", color: "teal" },
+  { id: "m2", initials: "AL", name: "Alex L.", color: "purple" },
+  { id: "m3", initials: "JK", name: "Jordan K.", color: "mint" },
+  { id: "m4", initials: "SR", name: "Sam R.", color: "peach" },
+  { id: "m5", initials: "TN", name: "Taylor N.", color: "blue" },
+  { id: "m6", initials: "CW", name: "Casey W.", color: "teal" },
 ];
 
 const startingTasks: Task[] = [
-  { id: "t1", title: "Review the latest homepage concepts", projectId: "atlas", due: "Today", done: false },
-  { id: "t2", title: "Share feedback with the design team", projectId: "atlas", due: "Today", done: false },
-  { id: "t3", title: "Collect onboarding docs in one place", projectId: "onboarding", due: "Tomorrow", done: false },
-  { id: "t4", title: "Summarize the interview notes", projectId: "research", due: "Oct 9", done: true },
+  { id: "t1", title: "Review the latest homepage concepts", projectId: "atlas", due: "Today", done: false, assigneeId: "m1" },
+  { id: "t2", title: "Share feedback with the design team", projectId: "atlas", due: "Today", done: false, assigneeId: "m2" },
+  { id: "t3", title: "Collect onboarding docs in one place", projectId: "onboarding", due: "Tomorrow", done: false, assigneeId: "m3" },
+  { id: "t4", title: "Summarize the interview notes", projectId: "research", due: "Oct 9", done: true, assigneeId: "m1" },
+];
+
+const startingNotifications: Notification[] = [
+  { id: "n1", message: "Alex L. completed 'Share feedback with design'", time: "2m ago", read: false },
+  { id: "n2", message: "Jordan K. added a task to Team onboarding", time: "1h ago", read: false },
+  { id: "n3", message: "Customer research due date is approaching", time: "3h ago", read: true },
 ];
 
 function readSaved<T>(key: string, fallback: T): T {
@@ -41,6 +56,7 @@ export default function Workspace({ user, onLogout }: Props) {
 
   const [projects, setProjects] = useState<Project[]>(() => readSaved(projectKey, startingProjects));
   const [tasks, setTasks] = useState<Task[]>(() => readSaved(taskKey, startingTasks));
+  const [notifications, setNotifications] = useState<Notification[]>(startingNotifications);
   const [activeNav, setActiveNav] = useState<NavItem>("Overview");
   const [query, setQuery] = useState("");
   const [modal, setModal] = useState<"task" | "project" | null>(null);
@@ -57,16 +73,20 @@ export default function Workspace({ user, onLogout }: Props) {
     });
   }, [activeNav, query, tasks]);
 
-  const addTask = useCallback((title: string, projectId: string) => {
-    setTasks((prev) => [{ id: crypto.randomUUID(), title, projectId, due: "Today", done: false }, ...prev]);
+  const addTask = useCallback((title: string, projectId: string, assigneeId?: string) => {
+    setTasks((prev) => [{ id: crypto.randomUUID(), title, projectId, due: "Today", done: false, assigneeId }, ...prev]);
   }, []);
 
-  const addProject = useCallback((name: string) => {
+  const addProject = useCallback((name: string, status: import("../types").ProjectStatus) => {
     const colors = ["lilac", "mint", "peach"];
     setProjects((prev) => [
       ...prev,
-      { id: crypto.randomUUID(), name, description: "A new space for good work", color: colors[prev.length % colors.length], due: "Coming soon" },
+      { id: crypto.randomUUID(), name, description: "A new space for good work", color: colors[prev.length % colors.length], due: "Coming soon", status },
     ]);
+  }, []);
+
+  const markAllRead = useCallback(() => {
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
   }, []);
 
   const toggleTask = useCallback((id: string) => {
@@ -85,7 +105,14 @@ export default function Workspace({ user, onLogout }: Props) {
         onLogout={onLogout}
       />
       <main className="main-area">
-        <Topbar user={user} activeNav={activeNav} query={query} onQueryChange={setQuery} />
+        <Topbar
+          user={user}
+          activeNav={activeNav}
+          query={query}
+          onQueryChange={setQuery}
+          notifications={notifications}
+          onMarkAllRead={markAllRead}
+        />
         <div className="page-content">
           <section className="welcome-row">
             <div>
@@ -102,7 +129,7 @@ export default function Workspace({ user, onLogout }: Props) {
             </div>
           </section>
 
-          <StatsGrid projects={projects} tasks={tasks} />
+          <StatsGrid projects={projects} tasks={tasks} members={ORG_MEMBERS} />
 
           <ProjectsSection
             projects={projects}
@@ -115,6 +142,7 @@ export default function Workspace({ user, onLogout }: Props) {
             <TasksPanel
               tasks={visibleTasks}
               projects={projects}
+              members={ORG_MEMBERS}
               activeNav={activeNav}
               onToggle={toggleTask}
               onAddTask={() => setModal("task")}
@@ -134,6 +162,7 @@ export default function Workspace({ user, onLogout }: Props) {
         <Modal
           mode={modal}
           projects={projects}
+          members={ORG_MEMBERS}
           onAddTask={addTask}
           onAddProject={addProject}
           onClose={() => setModal(null)}

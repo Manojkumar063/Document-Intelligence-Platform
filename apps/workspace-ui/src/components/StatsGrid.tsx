@@ -1,12 +1,13 @@
 import Icon from "./Icon";
-import type { Project, Task } from "../types";
+import type { Project, Task, Member } from "../types";
 
 interface Props {
   projects: Project[];
   tasks: Task[];
+  members: Member[];
 }
 
-export default function StatsGrid({ projects, tasks }: Props) {
+export default function StatsGrid({ projects, tasks, members }: Props) {
   const pending = tasks.filter((t) => !t.done).length;
   const completed = tasks.filter((t) => t.done).length;
 
@@ -33,10 +34,13 @@ export default function StatsGrid({ projects, tasks }: Props) {
           <span className="stat-icon orange"><span className="people-symbol">♧</span></span>
           <span className="stat-trend">All together</span>
         </div>
-        <strong className="stat-number">06</strong>
+        <strong className="stat-number">{members.length.toString().padStart(2, "0")}</strong>
         <span className="stat-label">People in your workspace</span>
-        <div className="mini-avatars" aria-label="Six workspace members">
-          <span>PM</span><span>AL</span><span>JK</span><span>+3</span>
+        <div className="mini-avatars" aria-label="Workspace members">
+          {members.slice(0, 3).map((m) => (
+            <span key={m.id} className={`member-${m.color}`}>{m.initials}</span>
+          ))}
+          {members.length > 3 && <span>+{members.length - 3}</span>}
         </div>
       </article>
     </section>

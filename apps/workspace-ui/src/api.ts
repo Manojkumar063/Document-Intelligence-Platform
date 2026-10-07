@@ -8,11 +8,12 @@ interface APIError {
 
 export async function apiRequest<T>(
   path: string,
-  body?: Record<string, string>,
-  token?: string
+  body?: Record<string, unknown>,
+  token?: string,
+  method?: string
 ): Promise<T> {
   const response = await fetch(`${apiUrl}${path}`, {
-    method: body ? "POST" : "GET",
+    method: method ?? (body ? "POST" : "GET"),
     headers: {
       ...(body ? { "Content-Type": "application/json" } : {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
