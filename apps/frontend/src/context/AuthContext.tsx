@@ -4,8 +4,6 @@ import type { User } from "../types";
 
 interface AuthCtx {
   user: User | null;
-  token: string | null;
-  setToken: (t: string | null) => void;
   setUser: (u: User) => void;
   logout: () => void;
   loading: boolean;
@@ -14,27 +12,13 @@ interface AuthCtx {
 const AuthContext = createContext<AuthCtx>({} as AuthCtx);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [token, setTokenState] = useState<string | null>(() => {
-    localStorage.removeItem("token");
-    return null;
-  });
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const setToken = (t: string | null) => {
-    setTokenState(t);
-    if (t) {
-      void getMe()
-        .then((response) => setUser(response.data))
-        .catch(() => setUser(null));
-    }
-  };
-
   const logout = () => {
-    setToken(null);
     setUser(null);
     void logoutRequest().catch((error: unknown) => {
-      console.error("Could not clear the shared sign-in session", error);
+      console.error("Could not clear the shared sign-in session", String(error));
     });
   };
 
@@ -45,10 +29,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const response = await getMe();
         if (active) setUser(response.data);
       } catch {
-        if (active) {
-          setUser(null);
-          setTokenState(null);
-        }
+        if (active) setUser(null);
       } finally {
         if (active) setLoading(false);
       }
@@ -63,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, token, setToken, setUser, logout, loading }}>
+    <AuthContext.Provider value={{ user, setUser, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

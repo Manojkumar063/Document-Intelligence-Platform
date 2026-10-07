@@ -1,4 +1,4 @@
-import type { Project, Task, User, WorkspaceInfo, WorkspaceOption } from "./types";
+import type { Notification, Project, Task, User, WorkspaceInfo, WorkspaceOption } from "./types";
 
 const apiUrl = (import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1").replace(/\/$/, "");
 
@@ -143,67 +143,71 @@ export async function acceptWorkspaceInvitation(token: string): Promise<Workspac
   return toWorkspace(await apiRequest<WorkspaceResponse>("/workspace/invitations/accept", { token }));
 }
 
-export async function getWorkspaceData(token?: string): Promise<{ projects: Project[]; tasks: Task[] }> {
+export async function getWorkspaceData(): Promise<{ projects: Project[]; tasks: Task[] }> {
   const [projects, tasks] = await Promise.all([
-    apiRequest<ProjectResponse[]>("/workspace/projects", undefined, token),
-    apiRequest<TaskResponse[]>("/workspace/tasks", undefined, token),
+    apiRequest<ProjectResponse[]>("/workspace/projects"),
+    apiRequest<TaskResponse[]>("/workspace/tasks"),
   ]);
   return { projects: projects.map(toProject), tasks: tasks.map(toTask) };
 }
 
-export async function createProject(token: string | undefined, payload: ProjectPayload): Promise<Project> {
-  return toProject(await apiRequest<ProjectResponse>("/workspace/projects", payload, token));
+export async function createProject(payload: ProjectPayload): Promise<Project> {
+  return toProject(await apiRequest<ProjectResponse>("/workspace/projects", payload));
 }
 
-export async function updateProject(token: string | undefined, id: string, payload: ProjectPayload): Promise<Project> {
-  return toProject(await apiRequest<ProjectResponse>(`/workspace/projects/${id}`, payload, token, "PATCH"));
+export async function updateProject(id: string, payload: ProjectPayload): Promise<Project> {
+  return toProject(await apiRequest<ProjectResponse>(`/workspace/projects/${id}`, payload, undefined, "PATCH"));
 }
 
-export async function deleteProject(token: string | undefined, id: string): Promise<void> {
-  await apiRequest<void>(`/workspace/projects/${id}`, undefined, token, "DELETE");
+export async function deleteProject(id: string): Promise<void> {
+  await apiRequest<void>(`/workspace/projects/${id}`, undefined, undefined, "DELETE");
 }
 
-export async function createTask(token: string | undefined, payload: TaskPayload): Promise<Task> {
-  return toTask(await apiRequest<TaskResponse>("/workspace/tasks", payload, token));
+export async function createTask(payload: TaskPayload): Promise<Task> {
+  return toTask(await apiRequest<TaskResponse>("/workspace/tasks", payload));
 }
 
-export async function updateTask(token: string | undefined, id: string, payload: TaskPayload): Promise<Task> {
-  return toTask(await apiRequest<TaskResponse>(`/workspace/tasks/${id}`, payload, token, "PATCH"));
+export async function updateTask(id: string, payload: TaskPayload): Promise<Task> {
+  return toTask(await apiRequest<TaskResponse>(`/workspace/tasks/${id}`, payload, undefined, "PATCH"));
 }
 
-export async function deleteTask(token: string | undefined, id: string): Promise<void> {
-  await apiRequest<void>(`/workspace/tasks/${id}`, undefined, token, "DELETE");
+export async function deleteTask(id: string): Promise<void> {
+  await apiRequest<void>(`/workspace/tasks/${id}`, undefined, undefined, "DELETE");
 }
 
-export async function login(email: string, password: string): Promise<{ token: string; user: User }> {
-  const tokenResponse = await apiRequest<{ access_token: string }>("/auth/login", { email, password });
-  const user = await apiRequest<User>("/users/me", undefined, tokenResponse.access_token);
+export async function login(email: string, password: string): Promise<User> {
+  // /auth/login sets the rag_access_token HTTP-only cookie and returns the token.
+  // We pass it explicitly to /users/me to avoid a race where the cookie isn't
+  // available to the next fetch yet.
+  const { access_token } = await apiRequest<{ access_token: string }>("/auth/login", { email, password });
+  const user = await apiRequest<User>("/users/me", undefined, access_token);
   if (!user.is_active) throw new Error("This account is disabled. Contact your administrator.");
-  return { token: tokenResponse.access_token, user };
+  return user;
 }
 
 export async function register(email: string, password: string, full_name: string): Promise<void> {
   await apiRequest<User>("/auth/register", { email, password, full_name });
 }
 
-export async function getMe(token?: string): Promise<User> {
-  return apiRequest<User>("/users/me", undefined, token);
+export async function getMe(): Promise<User> {
+  return apiRequest<User>("/users/me");
 }
 
 export async function logoutSession(): Promise<void> {
   await apiRequest<void>("/auth/logout", undefined, undefined, "POST");
 }
 
-export function getToken(): string | null {
-  return sessionStorage.getItem("token");
+interface NotificationListResponse {
+  items: Notification[];
+  unread_count: number;
 }
 
-export function saveToken(token: string): void {
-  sessionStorage.setItem("token", token);
+export async function getNotifications(): Promise<NotificationListResponse> {
+  return apiRequest<NotificationListResponse>("/notifications");
 }
 
-export function clearToken(): void {
-  sessionStorage.removeItem("token");
+export async function markNotificationRead(id: string): Promise<Notification> {
+  return apiRequest<Notification>(`/notifications/${encodeURIComponent(id)}/read`, undefined, undefined, "PATCH");
 }
 
 export function userInitials(user: User): string {

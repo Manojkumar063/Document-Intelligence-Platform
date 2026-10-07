@@ -2,7 +2,7 @@ import { useState } from "react";
 import { login, register } from "../api";
 import type { User } from "../types";
 
-export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string, user: User) => void }) {
+export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (user: User) => void }) {
   const hasInvitation = new URLSearchParams(window.location.search).has("invite");
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState("");
@@ -17,8 +17,8 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (toke
     setLoading(true);
     try {
       if (isRegistering) await register(email, password, fullName);
-      const { token, user } = await login(email, password);
-      onAuthenticated(token, user);
+      const user = await login(email, password);
+      onAuthenticated(user);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Could not connect to the authentication service");
     } finally {

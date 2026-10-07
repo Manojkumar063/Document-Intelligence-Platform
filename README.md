@@ -27,43 +27,74 @@ docker compose exec backend python scripts/reindex_vectors.py
 open http://localhost:8000/docs
 ```
 
-## Development (without Docker)
+## Running Locally (without Docker)
+
+You need **Python 3.11+** and **Node.js 18+** installed. Your MongoDB is already hosted on Atlas so no local database setup is required. Start services in this order:
+
+### 1. Backend
 
 ```bash
-# Start MongoDB and Qdrant locally (or use Docker)
-docker compose up mongodb qdrant -d
-
 cd apps/backend
-python -m venv .venv
-.venv\Scripts\activate        # Windows
-# source .venv/bin/activate   # macOS/Linux
+
+# Create and activate a virtual environment
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # macOS/Linux
+
+# Install dependencies
 pip install -r requirements.txt
 
+# Copy env file and configure
+copy .env.example .env       # Windows
+# cp .env.example .env       # macOS/Linux
+# Edit .env — set LLM_API_KEY for AI/embedding features
+# Set QDRANT_URL=http://localhost:6333 if using RAG features
+
+# Start the backend
 uvicorn app.main:app --reload --port 8000
 ```
 
-## Frontend
+Runs at → `http://localhost:8000`
+API docs at → `http://localhost:8000/docs`
 
-The RAG Workspace navigation includes a **Back to Teamspace** link. By default it opens `http://localhost:3001`; set `VITE_WORKSPACE_URL` in `apps/frontend/.env` before starting/building the frontend to use a different Teamspace URL.
-Both frontends use the backend's shared HTTP-only sign-in cookie, so signing in to either app also signs you into the other. For local development, access both frontends using `localhost` (not a mix of `localhost` and `127.0.0.1`) and allow both frontend URLs in `CORS_ORIGINS`.
+### 2. Frontend (RAG app)
 
 ```bash
 cd apps/frontend
+
+copy .env.example .env       # Windows
+# cp .env.example .env       # macOS/Linux
+
 npm install
-npm run dev   # http://localhost:5173
+npm run dev
 ```
 
-## Teamspace workspace UI
+Runs at → `http://localhost:3000`
 
-With the backend and MongoDB running, start the workspace UI:
+### 3. Workspace UI
 
 ```bash
 cd apps/workspace-ui
+
+copy .env.example .env       # Windows
+# cp .env.example .env       # macOS/Linux
+
 npm install
-npm run dev   # http://localhost:3001
+npm run dev
 ```
 
-Projects and tasks created in Teamspace are stored in MongoDB and scoped to the active workspace. Workspace owners can invite teammates with email-bound links from the workspace switcher. See [apps/workspace-ui/README.md](apps/workspace-ui/README.md) for details.
+Runs at → `http://localhost:3001`
+
+### Notes
+
+- Both frontends use the backend's shared HTTP-only sign-in cookie — signing in to either app also signs you into the other.
+- For local development, always access both frontends using `localhost` (not a mix of `localhost` and `127.0.0.1`).
+- Both frontend origins must be present in `CORS_ORIGINS` inside `apps/backend/.env`.
+- Qdrant is only required for document upload and RAG features. If you only need workspace/tasks/notifications you can skip it. To run Qdrant locally without Docker, download the binary from [qdrant.tech](https://qdrant.tech/documentation/quick-start/) — it starts on `http://localhost:6333` by default.
+
+### `VITE_WORKSPACE_URL`
+
+The RAG Workspace navigation includes a **Back to Teamspace** link. By default it points to `http://localhost:3001`. Set `VITE_WORKSPACE_URL` in `apps/frontend/.env` to change it before starting or building the frontend.
 
 ## Running Tests
 
