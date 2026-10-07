@@ -14,8 +14,8 @@ A production-oriented Retrieval-Augmented Generation application.
 
 ```bash
 # 1. Copy and configure environment
-cp backend/.env.example backend/.env
-# Edit backend/.env — set LLM_API_KEY at minimum
+cp apps/backend/.env.example apps/backend/.env
+# Edit apps/backend/.env — set LLM_API_KEY for AI and embedding features
 
 # 2. Start MongoDB, Qdrant, and the backend
 docker compose up mongodb qdrant backend
@@ -33,27 +33,42 @@ open http://localhost:8000/docs
 # Start MongoDB and Qdrant locally (or use Docker)
 docker compose up mongodb qdrant -d
 
-cd backend
+cd apps/backend
 python -m venv .venv
 .venv\Scripts\activate        # Windows
 # source .venv/bin/activate   # macOS/Linux
 pip install -r requirements.txt
 
-uvicorn app.main:app --reload
+uvicorn app.main:app --reload --port 8000
 ```
 
 ## Frontend
 
+The RAG Workspace navigation includes a **Back to Teamspace** link. By default it opens `http://localhost:3001`; set `VITE_WORKSPACE_URL` in `apps/frontend/.env` before starting/building the frontend to use a different Teamspace URL.
+Both frontends use the backend's shared HTTP-only sign-in cookie, so signing in to either app also signs you into the other. For local development, access both frontends using `localhost` (not a mix of `localhost` and `127.0.0.1`) and allow both frontend URLs in `CORS_ORIGINS`.
+
 ```bash
-cd frontend
+cd apps/frontend
 npm install
 npm run dev   # http://localhost:5173
 ```
 
+## Teamspace workspace UI
+
+With the backend and MongoDB running, start the workspace UI:
+
+```bash
+cd apps/workspace-ui
+npm install
+npm run dev   # http://localhost:3001
+```
+
+Projects and tasks created in Teamspace are stored in MongoDB and scoped to the active workspace. Workspace owners can invite teammates with email-bound links from the workspace switcher. See [apps/workspace-ui/README.md](apps/workspace-ui/README.md) for details.
+
 ## Running Tests
 
 ```bash
-cd backend
+cd apps/backend
 pytest tests/ -v
 ```
 
@@ -69,7 +84,7 @@ By default, uploads are stored in the local `uploads/` directory. To use S3:
 
 1. In the AWS Console, create a private S3 bucket in the region you intend to use. Keep **Block all public access** enabled and leave default encryption enabled.
 2. Give the backend's IAM role (recommended) or IAM user permission to access only this bucket. The document workflow needs `s3:PutObject`, `s3:GetObject`, and `s3:DeleteObject` on `arn:aws:s3:::<bucket-name>/*`. Do not put AWS root credentials in the application.
-3. Set these values in `backend/.env`:
+3. Set these values in `apps/backend/.env`:
 
    ```dotenv
    STORAGE_BACKEND=s3

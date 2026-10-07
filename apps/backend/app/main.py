@@ -33,6 +33,19 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await db["document_versions"].create_index([("document_id", 1), ("version", -1)])
     await db["collections"].create_index("name_key", unique=True)
     await db["documents"].create_index("collection_id")
+    await db["workspace_projects"].create_index([("user_id", 1), ("workspace_id", 1)])
+    await db["workspace_tasks"].create_index([("user_id", 1), ("workspace_id", 1)])
+    await db["workspace_projects"].create_index([("workspace_id", 1), ("created_at", -1)])
+    await db["workspace_tasks"].create_index([("workspace_id", 1), ("created_at", -1)])
+    await db["workspace_tasks"].create_index([("workspace_id", 1), ("project_id", 1)])
+    await db["workspace_memberships"].create_index(
+        [("workspace_id", 1), ("user_id", 1)], unique=True
+    )
+    await db["workspace_memberships"].create_index([("user_id", 1), ("joined_at", 1)])
+    await db["workspace_invitations"].create_index(
+        [("token_hash", 1)], unique=True
+    )
+    await db["workspace_invitations"].create_index("expires_at", expireAfterSeconds=0)
     yield
     await close_db()
     await close_vector_store()
@@ -73,7 +86,7 @@ def create_app() -> FastAPI:
             content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred"}},
         )
 
-    from app.api.routes import admin, health, auth, users, documents, conversations, notifications, collections
+    from app.api.routes import admin, health, auth, users, documents, conversations, notifications, collections, workspace
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(users.router, prefix="/api/v1")
@@ -82,6 +95,7 @@ def create_app() -> FastAPI:
     app.include_router(admin.router, prefix="/api/v1")
     app.include_router(notifications.router, prefix="/api/v1")
     app.include_router(collections.router, prefix="/api/v1")
+    app.include_router(workspace.router, prefix="/api/v1")
 
     return app
 

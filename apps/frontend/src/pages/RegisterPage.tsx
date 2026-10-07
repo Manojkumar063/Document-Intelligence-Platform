@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { register } from "../api/client";
+import { login, register } from "../api/client";
 import { useAuth } from "../context/AuthContext";
 import { AuthArtwork } from "../components/AuthArtwork";
 
@@ -18,7 +18,8 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      const res = await register(email, password, fullName);
+      await register(email, password, fullName);
+      const res = await login(email, password);
       setToken(res.data.access_token);
       navigate("/chat");
     } catch (err: any) {

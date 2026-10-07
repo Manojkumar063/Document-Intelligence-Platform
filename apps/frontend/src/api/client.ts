@@ -1,7 +1,7 @@
 import axios from "axios";
 import type { AdminStats, AgentMode, AppNotification, Collection, CollectionDetail, Conversation, Document, DocumentVersion, Message, NotificationList, SourceReference, User, UserRole } from "../types";
 
-const api = axios.create({ baseURL: "http://localhost:8000/api/v1" });
+const api = axios.create({ baseURL: "http://localhost:8000/api/v1", withCredentials: true });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
@@ -15,6 +15,7 @@ export const register = (email: string, password: string, full_name: string) =>
 
 export const login = (email: string, password: string) =>
   api.post<{ access_token: string; token_type: string }>("/auth/login", { email, password });
+export const logout = () => api.post("/auth/logout");
 
 // Users
 export const getMe = () => api.get<User>("/users/me");

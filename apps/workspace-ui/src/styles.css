@@ -89,6 +89,12 @@ a { color: inherit; text-decoration: none; }
 .brand-mark { display: grid; width: 29px; height: 29px; place-items: center; border-radius: 9px; background: #2dd4bf; color: #0f172a; font: 800 18px Manrope, sans-serif; letter-spacing: -1px; }
 .brand-period { color: #2dd4bf; }
 .workspace-switcher { display: flex; align-items: center; gap: 10px; width: 100%; margin: 34px 0 29px; padding: 10px; text-align: left; color: #cbd5e1; border: 1px solid #1e293b; border-radius: 10px; background: #0f172a; }
+.workspace-switcher-wrap { position: relative; }
+.workspace-menu { position: absolute; top: calc(100% - 23px); right: 0; left: 0; z-index: 15; display: grid; padding: 7px; border: 1px solid #1e293b; border-radius: 9px; background: #0f172a; box-shadow: 0 14px 35px rgb(0 0 0 / .45); }
+.workspace-menu-label { margin: 4px 6px 6px; color: #475569; font-size: 8px; font-weight: 700; letter-spacing: .9px; }
+.workspace-menu-item, .workspace-menu-invite { display: flex; align-items: center; justify-content: space-between; min-height: 32px; padding: 0 7px; color: #94a3b8; text-align: left; border: 0; border-radius: 5px; background: transparent; font-size: 9px; }
+.workspace-menu-item:hover, .workspace-menu-invite:hover { color: #e2e8f0; background: #1e293b; }
+.workspace-menu-invite { margin-top: 5px; padding-top: 5px; color: #2dd4bf; border-top: 1px solid #1e293b; }
 .workspace-avatar { display: grid; width: 33px; height: 33px; flex: 0 0 auto; place-items: center; border-radius: 9px; background: #1e293b; color: #94a3b8; font: 700 13px Manrope, sans-serif; }
 .workspace-name, .profile-copy, .knowledge-copy { display: grid; gap: 3px; min-width: 0; }
 .workspace-name strong, .profile-copy strong, .knowledge-copy strong { overflow: hidden; font-size: 12px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
@@ -218,6 +224,9 @@ h1 { margin-bottom: 7px; color: #f1f5f9; font-size: clamp(24px, 2.7vw, 31px); fo
 .lower-grid { display: grid; grid-template-columns: minmax(0, 1.7fr) minmax(220px, .9fr); gap: 16px; margin-top: 33px; }
 .tasks-panel { min-width: 0; padding: 0 17px 12px; border: 1px solid #1e293b; border-radius: 10px; background: #0f172a; }
 .task-heading { margin: 15px 0 8px; }
+.task-filters { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 0 10px; border-bottom: 1px solid #1e293b; }
+.filter-select { max-width: 150px; min-height: 28px; padding: 0 7px; color: #94a3b8; border: 1px solid #1e293b; border-radius: 5px; background: #020817; font-size: 8px; }
+.clear-filters { padding: 0 5px; color: #2dd4bf; border: 0; background: transparent; font-size: 8px; }
 .task-list { display: grid; }
 .task-row { display: flex; min-height: 48px; align-items: center; gap: 11px; border-bottom: 1px solid #1e293b; }
 .task-checkbox { display: grid; width: 17px; height: 17px; flex: 0 0 auto; place-items: center; color: white; border: 1.3px solid #334155; border-radius: 5px; background: transparent; }
@@ -228,10 +237,32 @@ h1 { margin-bottom: 7px; color: #f1f5f9; font-size: clamp(24px, 2.7vw, 31px); fo
 .task-copy span { color: #475569; font-size: 8px; }
 .task-done .task-copy strong { color: #475569; text-decoration: line-through; }
 .task-due { flex: 0 0 auto; color: #475569; font-size: 8px; }
-.task-due.due-today { color: #fb923c; }
+.task-due.due-today, .task-due.due-overdue { color: #fb923c; }
 .task-more { width: 24px; }
+.task-menu-wrap { position: relative; }
 .add-task-link { display: inline-flex; align-items: center; gap: 6px; margin-top: 11px; padding: 4px 0; color: #2dd4bf; border: 0; background: transparent; font-size: 9px; font-weight: 600; }
 .empty-state { padding: 17px 0; color: #475569; font-size: 10px; }
+.workspace-error { margin-top: 22px; padding: 11px 13px; color: #fca5a5; border: 1px solid rgb(239 68 68 / 0.3); border-radius: 7px; background: rgb(239 68 68 / 0.1); font-size: 10px; }
+.workspace-loading { margin: 34px 0; color: #64748b; font-size: 11px; }
+.form-error { padding: 9px; color: #fca5a5; border: 1px solid rgb(239 68 68 / 0.3); border-radius: 6px; background: rgb(239 68 68 / 0.1); font-size: 10px; }
+.form-success { padding: 9px; color: #5eead4; border: 1px solid rgb(20 184 166 / .25); border-radius: 6px; background: rgb(20 184 166 / .08); font-size: 10px; }
+.form-hint { margin: 7px 0 0; color: #fb923c; font-size: 9px; }
+.workspace-access-modal { max-height: min(88vh, 720px); overflow-y: auto; }
+.invite-form { margin-bottom: 11px; }
+.invite-input-row, .invite-link-row { display: flex; gap: 7px; }
+.invite-input-row .form-input, .invite-link-input { min-width: 0; flex: 1; }
+.invite-link-row { margin-bottom: 16px; }
+.member-list-heading { display: flex; align-items: center; justify-content: space-between; margin: 18px 0 7px; padding-top: 13px; color: #cbd5e1; border-top: 1px solid #1e293b; font-size: 10px; }
+.member-list-heading span { color: #475569; font-size: 9px; }
+.workspace-member-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.workspace-member-row { display: flex; align-items: center; gap: 9px; min-width: 0; padding: 7px 0; }
+.workspace-member-copy { display: grid; min-width: 0; flex: 1; gap: 3px; }
+.workspace-member-copy strong { overflow: hidden; color: #cbd5e1; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-member-copy small { overflow: hidden; color: #64748b; font-size: 8px; text-overflow: ellipsis; white-space: nowrap; }
+.workspace-member-role { color: #64748b; font-size: 8px; text-transform: capitalize; }
+.remove-member-button { padding: 5px 6px; color: #f87171; border: 0; border-radius: 4px; background: transparent; font-size: 8px; }
+.remove-member-button:hover { background: rgb(239 68 68 / .12); }
+.remove-member-button:disabled { opacity: .5; }
 
 /* KNOWLEDGE CARD */
 .knowledge-card { position: relative; overflow: hidden; min-height: 238px; padding: 17px 18px 14px; border: 1px solid #1e293b; border-radius: 10px; background: linear-gradient(145deg, #0f172a, #0a1628); }
@@ -279,6 +310,14 @@ h1 { margin-bottom: 7px; color: #f1f5f9; font-size: clamp(24px, 2.7vw, 31px); fo
 
 /* STATUS BADGES */
 .project-card-top-right { display: flex; align-items: center; gap: 6px; }
+.project-card-top-right { position: relative; }
+.project-task-count { color: #64748b; font-size: 8px; }
+.item-menu { position: absolute; top: calc(100% + 4px); right: 0; z-index: 8; display: grid; min-width: 120px; padding: 4px; border: 1px solid #1e293b; border-radius: 7px; background: #0a0f1a; box-shadow: 0 10px 25px rgb(0 0 0 / 0.4); }
+.item-menu button { padding: 7px 8px; color: #94a3b8; text-align: left; border: 0; border-radius: 4px; background: transparent; font-size: 9px; white-space: nowrap; }
+.item-menu button:hover { color: #e2e8f0; background: #1e293b; }
+.item-menu button.danger-action { color: #f87171; }
+.item-menu button.danger-action:hover { background: rgb(239 68 68 / 0.12); }
+.project-empty { grid-column: 1 / -1; }
 .status-badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 99px; font-size: 8px; font-weight: 600; letter-spacing: .3px; white-space: nowrap; }
 .status-planning { color: #94a3b8; background: rgb(148 163 184 / 0.12); border: 1px solid rgb(148 163 184 / 0.2); }
 .status-inprogress { color: #2dd4bf; background: rgb(20 184 166 / 0.12); border: 1px solid rgb(20 184 166 / 0.2); }
@@ -309,7 +348,9 @@ h1 { margin-bottom: 7px; color: #f1f5f9; font-size: clamp(24px, 2.7vw, 31px); fo
 @media (max-width: 760px) {
   .sidebar { width: 62px; align-items: center; padding: 17px 7px 12px; }
   .brand { padding: 0; }
-  .brand > span:last-child, .workspace-switcher, .nav-label, .nav-item > span:not(.nav-count), .nav-count, .project-nav, .project-nav-heading, .sidebar-spacer, .knowledge-link > span:not(.knowledge-icon), .knowledge-link > svg, .sidebar-profile .profile-copy, .sidebar-profile .icon-button, .logout-button { display: none; }
+  .brand > span:last-child, .workspace-switcher .workspace-name, .workspace-switcher .switcher-chevron, .nav-label, .nav-item > span:not(.nav-count), .nav-count, .project-nav, .project-nav-heading, .sidebar-spacer, .knowledge-link > span:not(.knowledge-icon), .knowledge-link > svg, .sidebar-profile .profile-copy, .sidebar-profile .icon-button, .logout-button { display: none; }
+  .workspace-switcher { justify-content: center; width: 42px; height: 42px; margin: 26px 0 17px; padding: 3px; }
+  .workspace-menu { right: auto; left: 49px; top: 0; width: 185px; }
   .primary-nav { width: 100%; margin-top: 33px; }
   .nav-item { justify-content: center; padding: 0; }
   .knowledge-link { justify-content: center; width: 42px; height: 42px; padding: 4px; }

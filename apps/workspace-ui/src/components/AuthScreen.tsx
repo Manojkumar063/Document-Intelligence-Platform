@@ -3,6 +3,7 @@ import { login, register } from "../api";
 import type { User } from "../types";
 
 export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (token: string, user: User) => void }) {
+  const hasInvitation = new URLSearchParams(window.location.search).has("invite");
   const [isRegistering, setIsRegistering] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -35,7 +36,11 @@ export default function AuthScreen({ onAuthenticated }: { onAuthenticated: (toke
         <p className="eyebrow auth-eyebrow">YOUR TEAM'S HOME BASE</p>
         <h1>{isRegistering ? "Create your account" : "Welcome back"}</h1>
         <p className="auth-intro">
-          {isRegistering ? "Create an account to get started with your workspace." : "Sign in with the account you use for RAG Workspace."}
+          {hasInvitation
+            ? "You have a workspace invitation. Sign in or create an account using the email address the invitation was sent to."
+            : isRegistering
+              ? "Create an account to get started with your workspace."
+              : "Sign in with the account you use for RAG Workspace."}
         </p>
         {error && <div className="auth-error" role="alert">{error}</div>}
         <form onSubmit={submit}>

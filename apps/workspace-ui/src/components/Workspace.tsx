@@ -1,97 +1,214 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  createProject,
+  createTask,
+  createWorkspaceInvitation,
+  acceptWorkspaceInvitation,
+  deleteProject,
+  deleteTask,
+  getWorkspace,
+  getWorkspaceData,
+  removeWorkspaceMember,
+  switchWorkspace,
+  updateProject,
+  updateTask,
+  type ProjectPayload,
+  type TaskPayload,
+} from "../api";
 import Sidebar from "./Sidebar";
 import Topbar from "./Topbar";
 import StatsGrid from "./StatsGrid";
 import ProjectsSection from "./ProjectsSection";
-import TasksPanel from "./TasksPanel";
+import TasksPanel, { type TaskFilters } from "./TasksPanel";
 import KnowledgeCard from "./KnowledgeCard";
 import Modal from "./Modal";
-import type { User, Project, Task, NavItem, Member, Notification } from "../types";
+import type { User, Project, Task, NavItem, Member, Notification, WorkspaceInfo } from "../types";
+import WorkspaceAccessModal from "./WorkspaceAccessModal";
 
-const startingProjects: Project[] = [
-  { id: "atlas", name: "Atlas refresh", description: "A clearer home for our customers", color: "lilac", due: "Oct 18", status: "In Progress" },
-  { id: "onboarding", name: "Team onboarding", description: "Make every first week count", color: "mint", due: "Oct 22", status: "Planning" },
-  { id: "research", name: "Customer research", description: "Listen, learn, and build better", color: "peach", due: "Oct 29", status: "In Progress" },
-];
-
-export const ORG_MEMBERS: Member[] = [
-  { id: "m1", initials: "PM", name: "Priya M.", color: "teal" },
-  { id: "m2", initials: "AL", name: "Alex L.", color: "purple" },
-  { id: "m3", initials: "JK", name: "Jordan K.", color: "mint" },
-  { id: "m4", initials: "SR", name: "Sam R.", color: "peach" },
-  { id: "m5", initials: "TN", name: "Taylor N.", color: "blue" },
-  { id: "m6", initials: "CW", name: "Casey W.", color: "teal" },
-];
-
-const startingTasks: Task[] = [
-  { id: "t1", title: "Review the latest homepage concepts", projectId: "atlas", due: "Today", done: false, assigneeId: "m1" },
-  { id: "t2", title: "Share feedback with the design team", projectId: "atlas", due: "Today", done: false, assigneeId: "m2" },
-  { id: "t3", title: "Collect onboarding docs in one place", projectId: "onboarding", due: "Tomorrow", done: false, assigneeId: "m3" },
-  { id: "t4", title: "Summarize the interview notes", projectId: "research", due: "Oct 9", done: true, assigneeId: "m1" },
-];
-
-const startingNotifications: Notification[] = [
-  { id: "n1", message: "Alex L. completed 'Share feedback with design'", time: "2m ago", read: false },
-  { id: "n2", message: "Jordan K. added a task to Team onboarding", time: "1h ago", read: false },
-  { id: "n3", message: "Customer research due date is approaching", time: "3h ago", read: true },
-];
-
-function readSaved<T>(key: string, fallback: T): T {
-  try {
-    const stored = sessionStorage.getItem(key);
-    return stored ? (JSON.parse(stored) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-}
+const emptyFilters: TaskFilters = { projectId: "", assigneeId: "", status: "all", due: "all" };
 
 interface Props {
   user: User;
   onLogout: () => void;
 }
 
-export default function Workspace({ user, onLogout }: Props) {
-  const projectKey = `teamspace.${user.id}.projects`;
-  const taskKey = `teamspace.${user.id}.tasks`;
+function localDateString(): string {
+  const today = new Date();
+  return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+}
 
-  const [projects, setProjects] = useState<Project[]>(() => readSaved(projectKey, startingProjects));
-  const [tasks, setTasks] = useState<Task[]>(() => readSaved(taskKey, startingTasks));
-  const [notifications, setNotifications] = useState<Notification[]>(startingNotifications);
+export default function Workspace({ user, onLogout }: Props) {
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
+  const notifications: Notification[] = [];
   const [activeNav, setActiveNav] = useState<NavItem>("Overview");
   const [query, setQuery] = useState("");
-  const [modal, setModal] = useState<"task" | "project" | null>(null);
+  const [filters, setFilters] = useState<TaskFilters>(emptyFilters);
+  const [modal, setModal] = useState<{ mode: "task" | "project"; task?: Task; project?: Project } | null>(null);
+  const [accessModalOpen, setAccessModalOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const members = workspace?.members ?? [];
 
-  useEffect(() => { sessionStorage.setItem(projectKey, JSON.stringify(projects)); }, [projectKey, projects]);
-  useEffect(() => { sessionStorage.setItem(taskKey, JSON.stringify(tasks)); }, [taskKey, tasks]);
+  useEffect(() => {
+    let cancelled = false;
+    const loadWorkspace = async () => {
+      let info: WorkspaceInfo;
+      const invitationToken = new URLSearchParams(window.location.search).get("invite");
+      if (invitationToken) {
+        try {
+          info = await acceptWorkspaceInvitation(invitationToken);
+          const url = new URL(window.location.href);
+          url.searchParams.delete("invite");
+          window.history.replaceState({}, "", url);
+        } catch (invitationError) {
+          if (cancelled) return;
+          setError(invitationError instanceof Error ? invitationError.message : "Could not accept invitation");
+          info = await getWorkspace();
+        }
+      } else {
+        info = await getWorkspace();
+      }
+      const data = await getWorkspaceData();
+      if (cancelled) return;
+      setWorkspace(info);
+      setProjects(data.projects);
+      setTasks(data.tasks);
+    };
+    void loadWorkspace()
+      .catch((err: unknown) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load workspace data");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const changeWorkspace = useCallback(async (workspaceId: string) => {
+    setLoading(true);
+    setError("");
+    try {
+      const info = await switchWorkspace(workspaceId);
+      const data = await getWorkspaceData();
+      setWorkspace(info);
+      setProjects(data.projects);
+      setTasks(data.tasks);
+      setFilters(emptyFilters);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not switch workspace");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const inviteMember = useCallback((email: string) => createWorkspaceInvitation(email), []);
+
+  const removeMember = useCallback(async (member: Member) => {
+    await removeWorkspaceMember(member.id);
+    setWorkspace((current) => current
+      ? { ...current, members: current.members.filter((item) => item.id !== member.id) }
+      : current);
+  }, []);
 
   const visibleTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return tasks.filter((t) => {
-      const matchesView = activeNav !== "My tasks" || !t.done;
-      const matchesQuery = !q || t.title.toLowerCase().includes(q);
-      return matchesView && matchesQuery;
+    const today = localDateString();
+    return tasks.filter((task) => {
+      const project = projects.find((item) => item.id === task.projectId);
+      const matchesView = activeNav !== "My tasks"
+        || (task.assigneeId === user.id && (filters.status === "completed" || !task.done));
+      const matchesQuery = !q || task.title.toLowerCase().includes(q) || (project?.name.toLowerCase().includes(q) ?? false);
+      const matchesProject = !filters.projectId || task.projectId === filters.projectId;
+      const matchesAssignee = !filters.assigneeId
+        || (filters.assigneeId === "unassigned" ? !task.assigneeId : task.assigneeId === filters.assigneeId);
+      const matchesStatus = filters.status === "all"
+        || (filters.status === "completed" ? task.done : !task.done);
+      const matchesDue = filters.due === "all"
+        || (filters.due === "overdue" && Boolean(task.dueDate && task.dueDate < today && !task.done))
+        || (filters.due === "today" && task.dueDate === today)
+        || (filters.due === "upcoming" && Boolean(task.dueDate && task.dueDate > today))
+        || (filters.due === "no-date" && !task.dueDate);
+      return matchesView && matchesQuery && matchesProject && matchesAssignee && matchesStatus && matchesDue;
     });
-  }, [activeNav, query, tasks]);
+  }, [activeNav, filters, projects, query, tasks, user.id]);
 
-  const addTask = useCallback((title: string, projectId: string, assigneeId?: string) => {
-    setTasks((prev) => [{ id: crypto.randomUUID(), title, projectId, due: "Today", done: false, assigneeId }, ...prev]);
+  const saveTask = useCallback(async (payload: TaskPayload, task?: Task) => {
+    const saved = task
+      ? await updateTask(undefined, task.id, payload)
+      : await createTask(undefined, payload);
+    setTasks((previous) => task
+      ? previous.map((item) => item.id === task.id ? saved : item)
+      : [saved, ...previous]);
+    setError("");
   }, []);
 
-  const addProject = useCallback((name: string, status: import("../types").ProjectStatus) => {
-    const colors = ["lilac", "mint", "peach"];
-    setProjects((prev) => [
-      ...prev,
-      { id: crypto.randomUUID(), name, description: "A new space for good work", color: colors[prev.length % colors.length], due: "Coming soon", status },
-    ]);
+  const saveProject = useCallback(async (payload: ProjectPayload, project?: Project) => {
+    const saved = project
+      ? await updateProject(undefined, project.id, payload)
+      : await createProject(undefined, payload);
+    setProjects((previous) => project
+      ? previous.map((item) => item.id === project.id ? saved : item)
+      : [saved, ...previous]);
+    setError("");
   }, []);
 
-  const markAllRead = useCallback(() => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const removeProject = useCallback(async (project: Project) => {
+    if (!window.confirm(`Delete "${project.name}" and its tasks? This cannot be undone.`)) return;
+    try {
+      await deleteProject(undefined, project.id);
+      setProjects((previous) => previous.filter((item) => item.id !== project.id));
+      setTasks((previous) => previous.filter((item) => item.projectId !== project.id));
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete project");
+    }
   }, []);
 
-  const toggleTask = useCallback((id: string) => {
-    setTasks((prev) => prev.map((t) => t.id === id ? { ...t, done: !t.done } : t));
+  const removeTask = useCallback(async (task: Task) => {
+    if (!window.confirm(`Delete "${task.title}"? This cannot be undone.`)) return;
+    try {
+      await deleteTask(undefined, task.id);
+      setTasks((previous) => previous.filter((item) => item.id !== task.id));
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not delete task");
+    }
   }, []);
+
+  const toggleTask = useCallback(async (id: string, done: boolean) => {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    try {
+      const saved = await updateTask(undefined, id, {
+        title: task.title,
+        project_id: task.projectId,
+        due_date: task.dueDate,
+        assignee_id: task.assigneeId ?? null,
+        done,
+      });
+      setTasks((previous) => previous.map((item) => item.id === id ? saved : item));
+      setError("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update task");
+    }
+  }, [tasks]);
+
+  if (loading && !workspace) {
+    return <main className="auth-screen"><p className="auth-loading">Loading your shared workspace…</p></main>;
+  }
+  if (!workspace) {
+    return (
+      <main className="auth-screen">
+        <section className="auth-card">
+          <h1>Could not load workspace</h1>
+          <p className="auth-intro">{error || "The workspace service is unavailable."}</p>
+          <button type="button" className="button button-primary auth-submit" onClick={() => window.location.reload()}>Try again</button>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -101,17 +218,21 @@ export default function Workspace({ user, onLogout }: Props) {
         tasks={tasks}
         activeNav={activeNav}
         onNavChange={setActiveNav}
-        onAddProject={() => setModal("project")}
+        onAddProject={() => setModal({ mode: "project" })}
         onLogout={onLogout}
+        workspace={workspace}
+        onInvite={() => setAccessModalOpen(true)}
+        onSwitchWorkspace={(id) => void changeWorkspace(id)}
       />
       <main className="main-area">
         <Topbar
           user={user}
+          workspaceName={workspace.name}
           activeNav={activeNav}
           query={query}
           onQueryChange={setQuery}
           notifications={notifications}
-          onMarkAllRead={markAllRead}
+          onMarkAllRead={() => {}}
         />
         <div className="page-content">
           <section className="welcome-row">
@@ -124,48 +245,70 @@ export default function Workspace({ user, onLogout }: Props) {
               <p className="welcome-subtitle">A little progress every day adds up to big things.</p>
             </div>
             <div className="welcome-actions">
-              <button type="button" className="button button-secondary" onClick={() => setModal("project")}>New project</button>
-              <button type="button" className="button button-primary" onClick={() => setModal("task")}>Create task</button>
+              <button type="button" className="button button-secondary" onClick={() => setModal({ mode: "project" })}>New project</button>
+              <button type="button" className="button button-primary" onClick={() => setModal({ mode: "task" })} disabled={projects.length === 0}>Create task</button>
             </div>
           </section>
 
-          <StatsGrid projects={projects} tasks={tasks} members={ORG_MEMBERS} />
-
-          <ProjectsSection
-            projects={projects}
-            tasks={tasks}
-            onViewAll={setActiveNav}
-            onAddProject={() => setModal("project")}
-          />
-
-          <section className="lower-grid">
-            <TasksPanel
-              tasks={visibleTasks}
-              projects={projects}
-              members={ORG_MEMBERS}
-              activeNav={activeNav}
-              onToggle={toggleTask}
-              onAddTask={() => setModal("task")}
-              onViewAll={setActiveNav}
-            />
-            <KnowledgeCard />
-          </section>
-
-          <footer className="page-footer">
-            <span>Made for good work, together.</span>
-            <span>Teamspace <b>·</b> Your workspace, at a glance</span>
-          </footer>
+          {error && <div className="workspace-error" role="alert">{error}</div>}
+          {loading ? (
+            <p className="workspace-loading" role="status">Loading your workspace…</p>
+          ) : (
+            <>
+              <StatsGrid projects={projects} tasks={tasks} members={members} />
+              <ProjectsSection
+                projects={projects}
+                tasks={tasks}
+                onViewAll={setActiveNav}
+                onAddProject={() => setModal({ mode: "project" })}
+                onEditProject={(project) => setModal({ mode: "project", project })}
+                onDeleteProject={removeProject}
+                showAll={activeNav === "Projects"}
+              />
+              <section className="lower-grid">
+                <TasksPanel
+                  tasks={visibleTasks}
+                  projects={projects}
+                  members={members}
+                  activeNav={activeNav}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  onToggle={toggleTask}
+                  onAddTask={() => setModal({ mode: "task" })}
+                  onEditTask={(task) => setModal({ mode: "task", task })}
+                  onDeleteTask={removeTask}
+                  onViewAll={setActiveNav}
+                />
+                <KnowledgeCard />
+              </section>
+              <footer className="page-footer">
+                <span>Made for good work, together.</span>
+                <span>Teamspace <b>·</b> Your workspace, at a glance</span>
+              </footer>
+            </>
+          )}
         </div>
       </main>
 
       {modal && (
         <Modal
-          mode={modal}
+          mode={modal.mode}
+          task={modal.task}
+          project={modal.project}
           projects={projects}
-          members={ORG_MEMBERS}
-          onAddTask={addTask}
-          onAddProject={addProject}
+          members={members}
+          onSaveTask={(payload) => saveTask(payload, modal.task)}
+          onSaveProject={(payload) => saveProject(payload, modal.project)}
           onClose={() => setModal(null)}
+        />
+      )}
+      {accessModalOpen && (
+        <WorkspaceAccessModal
+          members={members}
+          currentUserId={user.id}
+          onInvite={inviteMember}
+          onRemoveMember={removeMember}
+          onClose={() => setAccessModalOpen(false)}
         />
       )}
     </div>
