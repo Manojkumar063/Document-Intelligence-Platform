@@ -38,6 +38,8 @@ export interface Project {
   status: ProjectStatus;
 }
 
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
+
 export interface Task {
   id: string;
   title: string;
@@ -45,6 +47,7 @@ export interface Task {
   dueDate: string | null;
   done: boolean;
   assigneeId?: string;
+  priority: TaskPriority;
 }
 
 export interface Notification {

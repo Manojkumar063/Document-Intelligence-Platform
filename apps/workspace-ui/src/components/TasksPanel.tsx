@@ -1,13 +1,15 @@
 import { useCallback, useState } from "react";
 import Icon from "./Icon";
 import { formatDateLabel } from "../date";
-import type { Task, Project, NavItem, Member } from "../types";
+import type { Task, Project, NavItem, Member, TaskPriority } from "../types";
 
 export interface TaskFilters {
   projectId: string;
   assigneeId: string;
   status: "all" | "open" | "completed";
   due: "all" | "overdue" | "today" | "upcoming" | "no-date";
+  priority: "all" | TaskPriority;
+  sortByPriority: boolean;
 }
 
 interface Props {
@@ -22,6 +24,14 @@ interface Props {
   onEditTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
   onViewAll: (nav: NavItem) => void;
+}
+
+const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
+
+const PRIORITY_LABEL: Record<string, string> = { low: "Low", medium: "Med", high: "High", urgent: "!!" };
+
+function PriorityBadge({ priority }: { priority: TaskPriority }) {
+  return <span className={`priority-badge priority-${priority}`}>{PRIORITY_LABEL[priority]}</span>;
 }
 
 function isOverdue(dueDate: string | null, done: boolean): boolean {
@@ -47,7 +57,11 @@ export default function TasksPanel({
   const changeFilter = (key: keyof TaskFilters, value: string) => {
     onFiltersChange({ ...filters, [key]: value });
   };
-  const hasFilters = filters.projectId !== "" || filters.assigneeId !== "" || filters.status !== "all" || filters.due !== "all";
+  const hasFilters = filters.projectId !== "" || filters.assigneeId !== "" || filters.status !== "all" || filters.due !== "all" || filters.priority !== "all";
+
+  const displayedTasks = filters.sortByPriority
+    ? [...tasks].sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority])
+    : tasks;
 
   return (
     <div className="tasks-panel">
@@ -77,10 +91,20 @@ export default function TasksPanel({
           <option value="upcoming">Upcoming</option>
           <option value="no-date">No due date</option>
         </select>
-        {hasFilters && <button type="button" className="clear-filters" onClick={() => onFiltersChange({ projectId: "", assigneeId: "", status: "all", due: "all" })}>Clear</button>}
+        <select className="filter-select" aria-label="Filter by priority" value={filters.priority} onChange={(e) => changeFilter("priority", e.target.value)}>
+          <option value="all">Any priority</option>
+          <option value="low">Low</option>
+          <option value="medium">Medium</option>
+          <option value="high">High</option>
+          <option value="urgent">Urgent</option>
+        </select>
+        <button type="button" className={`filter-select sort-priority-btn ${filters.sortByPriority ? "active" : ""}`} onClick={() => onFiltersChange({ ...filters, sortByPriority: !filters.sortByPriority })}>
+          ↑ Priority
+        </button>
+        {hasFilters && <button type="button" className="clear-filters" onClick={() => onFiltersChange({ projectId: "", assigneeId: "", status: "all", due: "all", priority: "all", sortByPriority: false })}>Clear</button>}
       </div>
       <div className="task-list">
-        {tasks.map((task) => {
+        {displayedTasks.map((task) => {
           const assignee = memberFor(task.assigneeId);
           const overdue = isOverdue(task.dueDate, task.done);
           return (
@@ -98,6 +122,7 @@ export default function TasksPanel({
                 <strong>{task.title}</strong>
                 <span>{projectNameFor(task.projectId)}</span>
               </div>
+              <PriorityBadge priority={task.priority} />
               {assignee && (
                 <span className={`task-assignee member-${assignee.color}`} title={assignee.name}>
                   {assignee.initials}

@@ -1,4 +1,4 @@
-import type { Notification, Project, Task, User, WorkspaceInfo, WorkspaceOption } from "./types";
+import type { Notification, Project, Task, TaskPriority, User, WorkspaceInfo, WorkspaceOption } from "./types";
 
 const apiUrl = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/$/, "");
 
@@ -42,6 +42,7 @@ export interface TaskPayload {
   due_date: string | null;
   assignee_id?: string | null;
   done?: boolean;
+  priority?: TaskPriority;
 }
 
 interface ProjectResponse {
@@ -60,6 +61,7 @@ interface TaskResponse {
   due_date: string | null;
   done: boolean;
   assignee_id: string | null;
+  priority?: TaskPriority;
 }
 
 interface WorkspaceMemberResponse {
@@ -101,6 +103,7 @@ function toTask(task: TaskResponse): Task {
     dueDate: task.due_date,
     done: task.done,
     assigneeId: task.assignee_id ?? undefined,
+    priority: task.priority ?? "medium",
   };
 }
 

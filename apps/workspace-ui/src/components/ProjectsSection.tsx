@@ -1,7 +1,8 @@
 import { useState } from "react";
 import Icon from "./Icon";
 import { formatDateLabel } from "../date";
-import type { Project, Task, NavItem } from "../types";
+import type { Project, Task, NavItem, Member } from "../types";
+import KanbanBoard from "./KanbanBoard";
 
 const STATUS_CLASS: Record<string, string> = {
   "Planning": "status-planning",
@@ -13,24 +14,39 @@ const STATUS_CLASS: Record<string, string> = {
 interface Props {
   projects: Project[];
   tasks: Task[];
+  members: Member[];
   onViewAll: (nav: NavItem) => void;
   onAddProject: () => void;
   onEditProject: (project: Project) => void;
   onDeleteProject: (project: Project) => void;
+  onToggleTask: (id: string, done: boolean) => void;
+  onEditTask: (task: Task) => void;
+  onDeleteTask: (task: Task) => void;
+  onAddTask: () => void;
   showAll: boolean;
 }
 
-export default function ProjectsSection({ projects, tasks, onViewAll, onAddProject, onEditProject, onDeleteProject, showAll }: Props) {
+export default function ProjectsSection({ projects, tasks, members, onViewAll, onAddProject, onEditProject, onDeleteProject, onToggleTask, onEditTask, onDeleteTask, onAddTask, showAll }: Props) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const [view, setView] = useState<"grid" | "board">("grid");
   const shownProjects = showAll ? projects : projects.slice(0, 3);
 
   return (
     <section className="section-block">
       <div className="section-heading">
         <div><h2>Your projects</h2><p>Big ideas, moving forward.</p></div>
-        <button type="button" className="text-button" onClick={() => onViewAll("Projects")}>View all <span>→</span></button>
+        <div className="section-heading-actions">
+          <div className="view-toggle">
+            <button type="button" className={`view-toggle-btn ${view === "grid" ? "active" : ""}`} onClick={() => setView("grid")} aria-label="Grid view"><Icon name="grid" size={14} /></button>
+            <button type="button" className={`view-toggle-btn ${view === "board" ? "active" : ""}`} onClick={() => setView("board")} aria-label="Board view"><Icon name="more" size={14} /></button>
+          </div>
+          <button type="button" className="text-button" onClick={() => onViewAll("Projects")}>View all <span>→</span></button>
+        </div>
       </div>
-      <div className="project-grid">
+      {view === "board" && (
+        <KanbanBoard tasks={tasks} projects={projects} members={members} onToggle={onToggleTask} onEditTask={onEditTask} onDeleteTask={onDeleteTask} onAddTask={onAddTask} />
+      )}
+      {view === "grid" && <div className="project-grid">
         {shownProjects.map((project, index) => {
           const projectTasks = tasks.filter((t) => t.projectId === project.id);
           const done = projectTasks.filter((t) => t.done).length;
@@ -69,7 +85,7 @@ export default function ProjectsSection({ projects, tasks, onViewAll, onAddProje
           <strong>Start something new</strong>
           <span>Bring your next big idea to life</span>
         </button>
-      </div>
+      </div>}
     </section>
   );
 }
