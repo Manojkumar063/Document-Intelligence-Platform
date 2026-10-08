@@ -53,9 +53,9 @@ export default function Sidebar({ user, projects, tasks, activeNav, onNavChange,
 
       <p className="nav-label">WORKSPACE</p>
       <nav className="primary-nav" aria-label="Main navigation">
-        {(["Overview", "My tasks", "Projects"] as NavItem[]).map((item) => (
+        {(["Overview", "My tasks", "Projects", "Activity"] as NavItem[]).map((item) => (
           <button className={`nav-item ${activeNav === item ? "active" : ""}`} key={item} onClick={handleNav(item)} type="button">
-            <Icon name={item === "Overview" ? "home" : item === "My tasks" ? "check" : "grid"} />
+            <Icon name={item === "Overview" ? "home" : item === "My tasks" ? "check" : item === "Activity" ? "bell" : "grid"} />
             <span>{item}</span>
             {item === "My tasks" && <span className="nav-count">{pendingCount}</span>}
           </button>

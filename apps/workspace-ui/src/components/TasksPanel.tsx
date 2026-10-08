@@ -1,4 +1,19 @@
 import { useCallback, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import Icon from "./Icon";
 import { formatDateLabel } from "../date";
 import type { Task, Project, NavItem, Member, TaskPriority } from "../types";
@@ -20,6 +35,7 @@ interface Props {
   filters: TaskFilters;
   onFiltersChange: (filters: TaskFilters) => void;
   onToggle: (id: string, done: boolean) => void;
+  onReorder: (tasks: Task[]) => void;
   onAddTask: () => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
@@ -27,11 +43,65 @@ interface Props {
 }
 
 const PRIORITY_ORDER: Record<string, number> = { urgent: 0, high: 1, medium: 2, low: 3 };
-
 const PRIORITY_LABEL: Record<string, string> = { low: "Low", medium: "Med", high: "High", urgent: "!!" };
 
 function PriorityBadge({ priority }: { priority: TaskPriority }) {
   return <span className={`priority-badge priority-${priority}`}>{PRIORITY_LABEL[priority]}</span>;
+}
+
+interface RowProps {
+  task: Task;
+  projectName: string;
+  assignee: Member | undefined;
+  overdue: boolean;
+  openMenu: string | null;
+  setOpenMenu: (id: string | null) => void;
+  onToggle: (id: string, done: boolean) => void;
+  onEditTask: (task: Task) => void;
+  onDeleteTask: (task: Task) => void;
+}
+
+function SortableTaskRow({ task, projectName, assignee, overdue, openMenu, setOpenMenu, onToggle, onEditTask, onDeleteTask }: RowProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: task.id });
+  const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.4 : 1 };
+  return (
+    <div ref={setNodeRef} style={style} className={`task-row ${task.done ? "task-done" : ""}`}>
+      <span className="drag-handle" {...attributes} {...listeners} aria-label="Drag to reorder">
+        <Icon name="more" size={14} />
+      </span>
+      <button
+        className="task-checkbox"
+        type="button"
+        aria-label={`${task.done ? "Mark incomplete" : "Complete"}: ${task.title}`}
+        aria-pressed={task.done}
+        onClick={() => onToggle(task.id, !task.done)}
+      >
+        {task.done && <Icon name="check" size={14} />}
+      </button>
+      <div className="task-copy">
+        <strong>{task.title}</strong>
+        <span>{projectName}</span>
+      </div>
+      <PriorityBadge priority={task.priority} />
+      {assignee && (
+        <span className={`task-assignee member-${assignee.color}`} title={assignee.name}>
+          {assignee.initials}
+        </span>
+      )}
+      <span className={`task-due ${overdue ? "due-overdue" : ""}`}>{formatDateLabel(task.dueDate)}</span>
+      <div className="task-menu-wrap">
+        <button type="button" className="icon-button subtle task-more" aria-label={`More options for ${task.title}`} aria-expanded={openMenu === task.id} onClick={() => setOpenMenu(openMenu === task.id ? null : task.id)}>
+          <Icon name="more" size={17} />
+        </button>
+        {openMenu === task.id && (
+          <div className="item-menu" role="group" aria-label={`Actions for ${task.title}`}>
+            <button type="button" onClick={() => { setOpenMenu(null); onEditTask(task); }}>Edit task</button>
+            <button type="button" className="danger-action" onClick={() => { setOpenMenu(null); onDeleteTask(task); }}>Delete task</button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function isOverdue(dueDate: string | null, done: boolean): boolean {
@@ -42,10 +112,12 @@ function isOverdue(dueDate: string | null, done: boolean): boolean {
 }
 
 export default function TasksPanel({
-  tasks, projects, members, activeNav, filters, onFiltersChange, onToggle,
+  tasks, projects, members, activeNav, filters, onFiltersChange, onToggle, onReorder,
   onAddTask, onEditTask, onDeleteTask, onViewAll,
 }: Props) {
   const [openMenu, setOpenMenu] = useState<string | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
+
   const projectNameFor = useCallback(
     (id: string) => projects.find((p) => p.id === id)?.name ?? "General",
     [projects]
@@ -62,6 +134,14 @@ export default function TasksPanel({
   const displayedTasks = filters.sortByPriority
     ? [...tasks].sort((a, b) => PRIORITY_ORDER[a.priority] - PRIORITY_ORDER[b.priority])
     : tasks;
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = displayedTasks.findIndex((t) => t.id === active.id);
+    const newIndex = displayedTasks.findIndex((t) => t.id === over.id);
+    onReorder(arrayMove(displayedTasks, oldIndex, newIndex));
+  }
 
   return (
     <div className="tasks-panel">
@@ -103,48 +183,27 @@ export default function TasksPanel({
         </button>
         {hasFilters && <button type="button" className="clear-filters" onClick={() => onFiltersChange({ projectId: "", assigneeId: "", status: "all", due: "all", priority: "all", sortByPriority: false })}>Clear</button>}
       </div>
-      <div className="task-list">
-        {displayedTasks.map((task) => {
-          const assignee = memberFor(task.assigneeId);
-          const overdue = isOverdue(task.dueDate, task.done);
-          return (
-            <div className={`task-row ${task.done ? "task-done" : ""}`} key={task.id}>
-              <button
-                className="task-checkbox"
-                type="button"
-                aria-label={`${task.done ? "Mark incomplete" : "Complete"}: ${task.title}`}
-                aria-pressed={task.done}
-                onClick={() => onToggle(task.id, !task.done)}
-              >
-                {task.done && <Icon name="check" size={14} />}
-              </button>
-              <div className="task-copy">
-                <strong>{task.title}</strong>
-                <span>{projectNameFor(task.projectId)}</span>
-              </div>
-              <PriorityBadge priority={task.priority} />
-              {assignee && (
-                <span className={`task-assignee member-${assignee.color}`} title={assignee.name}>
-                  {assignee.initials}
-                </span>
-              )}
-              <span className={`task-due ${overdue ? "due-overdue" : ""}`}>{formatDateLabel(task.dueDate)}</span>
-              <div className="task-menu-wrap">
-                <button type="button" className="icon-button subtle task-more" aria-label={`More options for ${task.title}`} aria-expanded={openMenu === task.id} onClick={() => setOpenMenu(openMenu === task.id ? null : task.id)}>
-                  <Icon name="more" size={17} />
-                </button>
-                {openMenu === task.id && (
-                  <div className="item-menu" role="group" aria-label={`Actions for ${task.title}`}>
-                    <button type="button" onClick={() => { setOpenMenu(null); onEditTask(task); }}>Edit task</button>
-                    <button type="button" className="danger-action" onClick={() => { setOpenMenu(null); onDeleteTask(task); }}>Delete task</button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
-        {tasks.length === 0 && <p className="empty-state">{hasFilters ? "No tasks match these filters." : "No tasks yet. Add a task to make a little progress."}</p>}
-      </div>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={displayedTasks.map((t) => t.id)} strategy={verticalListSortingStrategy}>
+          <div className="task-list">
+            {displayedTasks.map((task) => (
+              <SortableTaskRow
+                key={task.id}
+                task={task}
+                projectName={projectNameFor(task.projectId)}
+                assignee={memberFor(task.assigneeId)}
+                overdue={isOverdue(task.dueDate, task.done)}
+                openMenu={openMenu}
+                setOpenMenu={setOpenMenu}
+                onToggle={onToggle}
+                onEditTask={onEditTask}
+                onDeleteTask={onDeleteTask}
+              />
+            ))}
+            {tasks.length === 0 && <p className="empty-state">{hasFilters ? "No tasks match these filters." : "No tasks yet. Add a task to make a little progress."}</p>}
+          </div>
+        </SortableContext>
+      </DndContext>
       <button type="button" className="add-task-link" onClick={onAddTask}>
         <Icon name="plus" size={16} /> Add a task
       </button>

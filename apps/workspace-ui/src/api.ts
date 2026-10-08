@@ -1,4 +1,4 @@
-import type { Notification, Project, Task, TaskPriority, User, WorkspaceInfo, WorkspaceOption } from "./types";
+import type { ActivityEvent, Notification, Project, Task, TaskPriority, User, WorkspaceInfo, WorkspaceOption } from "./types";
 
 const apiUrl = (import.meta.env.VITE_API_URL || "/api/v1").replace(/\/$/, "");
 
@@ -203,6 +203,10 @@ export async function logoutSession(): Promise<void> {
 interface NotificationListResponse {
   items: Notification[];
   unread_count: number;
+}
+
+export async function getActivityFeed(): Promise<ActivityEvent[]> {
+  return apiRequest<ActivityEvent[]>("/workspace/activity");
 }
 
 export async function getNotifications(): Promise<NotificationListResponse> {

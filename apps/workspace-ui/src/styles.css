@@ -293,6 +293,9 @@ h1 { margin-bottom: 7px; color: #f1f5f9; font-size: clamp(24px, 2.7vw, 31px); fo
 .filter-select { max-width: 150px; min-height: 28px; padding: 0 7px; color: #94a3b8; border: 1px solid #1e293b; border-radius: 5px; background: #020817; font-size: 8px; }
 .clear-filters { padding: 0 5px; color: #2dd4bf; border: 0; background: transparent; font-size: 8px; }
 .task-list { display: grid; }
+.drag-handle { display: flex; align-items: center; flex: 0 0 auto; color: #334155; cursor: grab; touch-action: none; padding: 0 2px; border-radius: 3px; }
+.drag-handle:hover { color: #64748b; }
+.drag-handle:active { cursor: grabbing; }
 .task-row { display: flex; min-height: 48px; align-items: center; gap: 11px; border-bottom: 1px solid #1e293b; }
 .task-checkbox { display: grid; width: 17px; height: 17px; flex: 0 0 auto; place-items: center; color: white; border: 1.3px solid #334155; border-radius: 5px; background: transparent; }
 .task-checkbox:hover { border-color: #0f766e; }
@@ -373,6 +376,27 @@ h1 { margin-bottom: 7px; color: #f1f5f9; font-size: clamp(24px, 2.7vw, 31px); fo
 .notif-body p { margin: 0 0 3px; color: #cbd5e1; font-size: 10px; line-height: 1.5; }
 .notif-read .notif-body p { color: #475569; }
 .notif-body span { color: #475569; font-size: 9px; }
+
+/* ACTIVITY FEED */
+.activity-feed { max-width: 680px; }
+.activity-list { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.activity-item { display: flex; align-items: center; gap: 13px; padding: 13px 16px; border: 1px solid #1e293b; border-radius: 9px; background: #0f172a; transition: background .12s; }
+.activity-item:hover { background: #111827; }
+.activity-avatar { display: grid; width: 34px; height: 34px; flex: 0 0 auto; place-items: center; border-radius: 50%; font-size: 11px; font-weight: 700; border: 2px solid #1e293b; }
+.activity-body { flex: 1; min-width: 0; }
+.activity-body p { margin: 0 0 3px; color: #cbd5e1; font-size: 11px; line-height: 1.5; }
+.activity-body strong { color: #f1f5f9; }
+.activity-subject { color: #2dd4bf; }
+.activity-time { color: #475569; font-size: 9px; }
+.activity-icon { display: grid; width: 26px; height: 26px; flex: 0 0 auto; place-items: center; border-radius: 7px; font-size: 12px; font-weight: 700; }
+.activity-icon-task_completed { color: #4ade80; background: rgb(74 222 128 / 0.1); }
+.activity-icon-task_created { color: #2dd4bf; background: rgb(20 184 166 / 0.1); }
+.activity-icon-project_created { color: #818cf8; background: rgb(129 140 248 / 0.1); }
+.activity-icon-member_joined { color: #fb923c; background: rgb(251 146 60 / 0.1); }
+[data-theme="light"] .activity-item { background: #fff; border-color: #e2e8f0; }
+[data-theme="light"] .activity-item:hover { background: #f8fafc; }
+[data-theme="light"] .activity-body p { color: #334155; }
+[data-theme="light"] .activity-body strong { color: #0f172a; }
 
 /* KANBAN BOARD */
 .kanban-board { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
