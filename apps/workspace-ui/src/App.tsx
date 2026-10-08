@@ -3,8 +3,10 @@ import AuthScreen from "./components/AuthScreen";
 import Workspace from "./components/Workspace";
 import { getMe, logoutSession } from "./api";
 import type { User } from "./types";
+import { useTheme } from "./useTheme";
 
 export default function App() {
+  const { dark, toggle: toggleTheme } = useTheme();
   const [user, setUser] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
 
@@ -35,6 +37,6 @@ export default function App() {
   }
 
   return user
-    ? <Workspace key={user.id} user={user} onLogout={logout} />
+    ? <Workspace key={user.id} user={user} onLogout={logout} dark={dark} onToggleTheme={toggleTheme} />
     : <AuthScreen onAuthenticated={authenticate} />;
 }

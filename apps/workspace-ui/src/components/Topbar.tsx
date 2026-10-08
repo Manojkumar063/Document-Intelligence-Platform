@@ -11,9 +11,11 @@ interface Props {
   onQueryChange: (q: string) => void;
   notifications: Notification[];
   onMarkAllRead: () => void;
+  dark: boolean;
+  onToggleTheme: () => void;
 }
 
-export default function Topbar({ user, workspaceName, activeNav, query, onQueryChange, notifications, onMarkAllRead }: Props) {
+export default function Topbar({ user, workspaceName, activeNav, query, onQueryChange, notifications, onMarkAllRead, dark, onToggleTheme }: Props) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
   const unread = notifications.filter((n) => !n.read).length;
@@ -31,6 +33,9 @@ export default function Topbar({ user, workspaceName, activeNav, query, onQueryC
           <input aria-label="Search tasks" placeholder="Search anything..." value={query} onChange={(e) => onQueryChange(e.target.value)} />
           <kbd>⌘ K</kbd>
         </label>
+        <button type="button" className="icon-button theme-toggle" aria-label="Toggle theme" title={dark ? "Switch to light mode" : "Switch to dark mode"} onClick={onToggleTheme}>
+          {dark ? "☀" : "☾"}
+        </button>
         <div className="notif-wrap">
           <button
             ref={btnRef}

@@ -27,11 +27,13 @@ import Modal from "./Modal";
 import type { User, Project, Task, NavItem, Member, Notification, WorkspaceInfo } from "../types";
 import WorkspaceAccessModal from "./WorkspaceAccessModal";
 
-const emptyFilters: TaskFilters = { projectId: "", assigneeId: "", status: "all", due: "all" };
+const emptyFilters: TaskFilters = { projectId: "", assigneeId: "", status: "all", due: "all", priority: "all", sortByPriority: false };
 
 interface Props {
   user: User;
   onLogout: () => void;
+  dark: boolean;
+  onToggleTheme: () => void;
 }
 
 function localDateString(): string {
@@ -39,7 +41,7 @@ function localDateString(): string {
   return `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 }
 
-export default function Workspace({ user, onLogout }: Props) {
+export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
@@ -154,7 +156,8 @@ export default function Workspace({ user, onLogout }: Props) {
         || (filters.due === "today" && task.dueDate === today)
         || (filters.due === "upcoming" && Boolean(task.dueDate && task.dueDate > today))
         || (filters.due === "no-date" && !task.dueDate);
-      return matchesView && matchesQuery && matchesProject && matchesAssignee && matchesStatus && matchesDue;
+      const matchesPriority = filters.priority === "all" || task.priority === filters.priority;
+      return matchesView && matchesQuery && matchesProject && matchesAssignee && matchesStatus && matchesDue && matchesPriority;
     });
   }, [activeNav, filters, projects, query, tasks, user.id]);
 
@@ -210,6 +213,7 @@ export default function Workspace({ user, onLogout }: Props) {
         project_id: task.projectId,
         due_date: task.dueDate,
         assignee_id: task.assigneeId ?? null,
+        priority: task.priority,
         done,
       });
       setTasks((previous) => previous.map((item) => item.id === id ? saved : item));
@@ -257,6 +261,8 @@ export default function Workspace({ user, onLogout }: Props) {
           onQueryChange={setQuery}
           notifications={notifications}
           onMarkAllRead={() => { void markAllRead(); }}
+          dark={dark}
+          onToggleTheme={onToggleTheme}
         />
         <div className="page-content">
           <section className="welcome-row">
@@ -283,10 +289,15 @@ export default function Workspace({ user, onLogout }: Props) {
               <ProjectsSection
                 projects={projects}
                 tasks={tasks}
+                members={members}
                 onViewAll={setActiveNav}
                 onAddProject={() => setModal({ mode: "project" })}
                 onEditProject={(project) => setModal({ mode: "project", project })}
                 onDeleteProject={removeProject}
+                onToggleTask={toggleTask}
+                onEditTask={(task) => setModal({ mode: "task", task })}
+                onDeleteTask={removeTask}
+                onAddTask={() => setModal({ mode: "task" })}
                 showAll={activeNav === "Projects"}
               />
               <section className="lower-grid">

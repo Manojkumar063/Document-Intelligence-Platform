@@ -1,6 +1,6 @@
 import { useState } from "react";
 import type { ProjectPayload, TaskPayload } from "../api";
-import type { Project, Member, Task } from "../types";
+import type { Project, Member, Task, TaskPriority } from "../types";
 
 interface Props {
   mode: "task" | "project";
@@ -18,6 +18,7 @@ export default function Modal({ mode, projects, members, task, project, onSaveTa
   const [taskProject, setTaskProject] = useState(task?.projectId ?? projects[0]?.id ?? "");
   const [taskAssignee, setTaskAssignee] = useState(task?.assigneeId ?? "");
   const [taskDueDate, setTaskDueDate] = useState(task?.dueDate ?? "");
+  const [taskPriority, setTaskPriority] = useState<TaskPriority>(task?.priority ?? "medium");
   const [projectName, setProjectName] = useState(project?.name ?? "");
   const [projectDescription, setProjectDescription] = useState(project?.description ?? "");
   const [projectDueDate, setProjectDueDate] = useState(project?.dueDate ?? "");
@@ -37,6 +38,7 @@ export default function Modal({ mode, projects, members, task, project, onSaveTa
         project_id: taskProject,
         due_date: taskDueDate || null,
         assignee_id: taskAssignee || null,
+        priority: taskPriority,
       });
       onClose();
     } catch (err) {
@@ -92,6 +94,13 @@ export default function Modal({ mode, projects, members, task, project, onSaveTa
               </select>
               <label className="form-label" htmlFor="task-due-date">Due date</label>
               <input id="task-due-date" className="form-input" type="date" value={taskDueDate} onChange={(e) => setTaskDueDate(e.target.value)} />
+              <label className="form-label" htmlFor="task-priority">Priority</label>
+              <select id="task-priority" className="form-input" value={taskPriority} onChange={(e) => setTaskPriority(e.target.value as TaskPriority)}>
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
               <div className="modal-actions">
                 <button type="button" className="button button-secondary" onClick={onClose} disabled={saving}>Cancel</button>
                 <button type="submit" className="button button-primary" disabled={saving || projects.length === 0}>{saving ? "Saving…" : task ? "Save changes" : "Create task"}</button>
