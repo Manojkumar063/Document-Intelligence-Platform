@@ -59,4 +59,16 @@ export interface Notification {
   read: boolean;
 }
 
-export type NavItem = "Overview" | "My tasks" | "Projects";
+export type NavItem = "Overview" | "My tasks" | "Projects" | "Activity";
+
+export type ActivityEventType = "task_completed" | "task_created" | "project_created" | "member_joined";
+
+export interface ActivityEvent {
+  id: string;
+  type: ActivityEventType;
+  actor_name: string;
+  actor_initials: string;
+  actor_color: string;
+  subject: string;
+  created_at: string;
+}

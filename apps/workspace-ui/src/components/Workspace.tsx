@@ -6,6 +6,7 @@ import {
   acceptWorkspaceInvitation,
   deleteProject,
   deleteTask,
+  getActivityFeed,
   getNotifications,
   getWorkspace,
   getWorkspaceData,
@@ -23,8 +24,9 @@ import StatsGrid from "./StatsGrid";
 import ProjectsSection from "./ProjectsSection";
 import TasksPanel, { type TaskFilters } from "./TasksPanel";
 import KnowledgeCard from "./KnowledgeCard";
+import ActivityFeed from "./ActivityFeed";
 import Modal from "./Modal";
-import type { User, Project, Task, NavItem, Member, Notification, WorkspaceInfo } from "../types";
+import type { User, Project, Task, NavItem, Member, Notification, WorkspaceInfo, ActivityEvent } from "../types";
 import WorkspaceAccessModal from "./WorkspaceAccessModal";
 
 const emptyFilters: TaskFilters = { projectId: "", assigneeId: "", status: "all", due: "all", priority: "all", sortByPriority: false };
@@ -46,6 +48,9 @@ export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props
   const [tasks, setTasks] = useState<Task[]>([]);
   const [workspace, setWorkspace] = useState<WorkspaceInfo | null>(null);
   const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [activityLoading, setActivityLoading] = useState(false);
+  const [activityError, setActivityError] = useState("");
   const [activeNav, setActiveNav] = useState<NavItem>("Overview");
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<TaskFilters>(emptyFilters);
@@ -54,6 +59,16 @@ export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const members = workspace?.members ?? [];
+
+  useEffect(() => {
+    if (activeNav !== "Activity") return;
+    setActivityLoading(true);
+    setActivityError("");
+    getActivityFeed()
+      .then(setActivity)
+      .catch((err: unknown) => setActivityError(err instanceof Error ? err.message : "Could not load activity"))
+      .finally(() => setActivityLoading(false));
+  }, [activeNav]);
 
   useEffect(() => {
     let mounted = true;
@@ -204,6 +219,14 @@ export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props
     }
   }, []);
 
+  const reorderTasks = useCallback((reordered: Task[]) => {
+    setTasks((prev) => {
+      const reorderedIds = new Set(reordered.map((t) => t.id));
+      const rest = prev.filter((t) => !reorderedIds.has(t.id));
+      return [...reordered, ...rest];
+    });
+  }, []);
+
   const toggleTask = useCallback(async (id: string, done: boolean) => {
     const task = tasks.find((item) => item.id === id);
     if (!task) return;
@@ -283,6 +306,8 @@ export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props
           {error && <div className="workspace-error" role="alert">{error}</div>}
           {loading ? (
             <p className="workspace-loading" role="status">Loading your workspace…</p>
+          ) : activeNav === "Activity" ? (
+            <ActivityFeed events={activity} loading={activityLoading} error={activityError} />
           ) : (
             <>
               <StatsGrid projects={projects} tasks={tasks} members={members} />
@@ -309,6 +334,7 @@ export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props
                   filters={filters}
                   onFiltersChange={setFilters}
                   onToggle={toggleTask}
+                  onReorder={reorderTasks}
                   onAddTask={() => setModal({ mode: "task" })}
                   onEditTask={(task) => setModal({ mode: "task", task })}
                   onDeleteTask={removeTask}
