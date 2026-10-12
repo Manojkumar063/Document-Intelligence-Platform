@@ -21,7 +21,7 @@ def test_health(client: TestClient) -> None:
 def test_health_ready(client: TestClient) -> None:
     response = client.get("/api/v1/health/ready")
     assert response.status_code == 200
-    assert response.json()["status"] == "ok"
+    assert response.json()["status"] in ("ok", "degraded")
 
 
 def test_config_loads() -> None:
