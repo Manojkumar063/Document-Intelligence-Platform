@@ -7,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.db.redis_client import cache_get, cache_set, is_rate_limited
 from app.rag.prompts import RAG_SYSTEM_PROMPT
 from app.rag.reranking import rerank
 from app.rag.retrieval import RetrievedChunk, retrieve
@@ -48,6 +49,13 @@ async def run_rag(
     user_id: str,
     collection_id: str | None = None,
 ) -> RAGResult:
+    if await is_rate_limited(user_id):
+        return RAGResult(answer="You're sending messages too fast. Please wait a moment.", sources=[])
+
+    cache_key = f"{user_id}:{collection_id}:{question}"
+    cached = await cache_get("rag", cache_key)
+    if cached:
+        return RAGResult(answer=cached["answer"], sources=[])
     try:
         chunks = await retrieve(question, db, user_id, collection_id=collection_id)
         chunks = await rerank(question, chunks)
@@ -66,7 +74,9 @@ async def run_rag(
         HumanMessage(content=question),
     ]
     response = await llm.ainvoke(messages)
-    return RAGResult(answer=str(response.content), sources=chunks)
+    result = RAGResult(answer=str(response.content), sources=chunks)
+    await cache_set("rag", cache_key, {"answer": result.answer})
+    return result
 
 
 async def run_research(

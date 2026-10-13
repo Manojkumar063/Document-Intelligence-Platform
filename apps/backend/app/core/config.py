@@ -60,6 +60,13 @@ class Settings(BaseSettings):
     aws_session_token: str | None = None
     s3_bucket: str = ""
 
+    # Redis
+    redis_url: str = "redis://localhost:6379"
+    redis_enabled: bool = True
+    cache_ttl_seconds: int = 3600
+    rate_limit_requests: int = 20
+    rate_limit_window_seconds: int = 60
+
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
 
