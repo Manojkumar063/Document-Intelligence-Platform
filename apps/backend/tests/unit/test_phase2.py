@@ -1,4 +1,6 @@
 """Phase 2 tests — middleware, error handling, security utilities."""
+import logging
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -63,6 +65,22 @@ def test_request_id_header_added(client: TestClient) -> None:
 def test_custom_request_id_echoed(client: TestClient) -> None:
     response = client.get("/api/v1/health", headers={"X-Request-ID": "my-trace-id"})
     assert response.headers["x-request-id"] == "my-trace-id"
+
+
+def test_request_completion_is_logged(client: TestClient, caplog: pytest.LogCaptureFixture) -> None:
+    with caplog.at_level(logging.INFO, logger="app.core.middleware"):
+        response = client.get(
+            "/api/v1/health?token=must-not-be-logged",
+            headers={"X-Request-ID": "request-log-test"},
+        )
+
+    record = next(record for record in caplog.records if record.message == "HTTP request completed")
+    assert response.status_code == record.status_code == 200
+    assert record.request_id == "request-log-test"
+    assert record.method == "GET"
+    assert record.path == "/api/v1/health"
+    assert record.duration_ms >= 0
+    assert "must-not-be-logged" not in record.message
 
 
 # ── Error handling ────────────────────────────────────────────────────────────

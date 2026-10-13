@@ -57,6 +57,17 @@ uvicorn app.main:app --reload --port 8000
 Runs at → `http://localhost:8000`
 API docs at → `http://localhost:8000/docs`
 
+### Backend logs
+
+The backend writes structured JSON logs to standard output. Each completed HTTP
+request includes its request ID, method, path, status code, and duration; query
+strings and request bodies are not included. The request ID is also returned in
+the `X-Request-ID` response header and can be supplied with that request header
+to correlate application logs.
+
+When running locally, logs appear in the Uvicorn terminal. With Docker Compose,
+use `docker compose logs -f backend`.
+
 ### 2. Frontend (RAG app)
 
 ```bash
