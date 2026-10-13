@@ -6,6 +6,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.core.security import decode_access_token
 from app.db.database import get_db
+from app.db.redis_client import is_token_blacklisted
 from app.db.repositories.user_repo import UserRepository
 from app.utils.exceptions import ForbiddenError, NotFoundError, UnauthorizedError
 
@@ -21,6 +22,8 @@ async def get_current_user_id(
     token = session_token or (credentials.credentials if credentials else None)
     if token is None:
         raise UnauthorizedError("Authorization header missing")
+    if await is_token_blacklisted(token):
+        raise UnauthorizedError("Token has been revoked")
     payload = decode_access_token(token)
     user_id: str | None = payload.get("sub")
     if not user_id:

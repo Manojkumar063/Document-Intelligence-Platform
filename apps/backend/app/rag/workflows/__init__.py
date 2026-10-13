@@ -7,6 +7,7 @@ from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
+from app.db.redis_client import cache_get, cache_set, is_rate_limited
 from app.rag.prompts import RAG_SYSTEM_PROMPT
 from app.rag.reranking import rerank
 from app.rag.retrieval import RetrievedChunk, retrieve
@@ -33,32 +34,49 @@ def _build_llm() -> ChatOpenAI:
     )
 
 
+async def _general_answer(question: str) -> str:
+    llm = _build_llm()
+    response = await llm.ainvoke([
+        SystemMessage(content="You are a helpful assistant. Answer the user conversationally."),
+        HumanMessage(content=question),
+    ])
+    return str(response.content)
+
+
 async def run_rag(
     question: str,
     db: AsyncIOMotorDatabase,
     user_id: str,
     collection_id: str | None = None,
 ) -> RAGResult:
-    chunks = await retrieve(question, db, user_id, collection_id=collection_id)
-    chunks = await rerank(question, chunks)
+    if await is_rate_limited(user_id):
+        return RAGResult(answer="You're sending messages too fast. Please wait a moment.", sources=[])
+
+    cache_key = f"{user_id}:{collection_id}:{question}"
+    cached = await cache_get("rag", cache_key)
+    if cached:
+        return RAGResult(answer=cached["answer"], sources=[])
+    try:
+        chunks = await retrieve(question, db, user_id, collection_id=collection_id)
+        chunks = await rerank(question, chunks)
+    except Exception:
+        chunks = []
 
     if not chunks:
-        return RAGResult(
-            answer="I couldn't find any relevant information in your documents to answer that question.",
-            sources=[],
-        )
+        return RAGResult(answer=await _general_answer(question), sources=[])
 
     context = "\n\n---\n\n".join(
         f"[{c.metadata.get('filename', 'document')}]\n{c.content}" for c in chunks
     )
-
     llm = _build_llm()
     messages = [
         SystemMessage(content=RAG_SYSTEM_PROMPT.format(context=context)),
         HumanMessage(content=question),
     ]
     response = await llm.ainvoke(messages)
-    return RAGResult(answer=str(response.content), sources=chunks)
+    result = RAGResult(answer=str(response.content), sources=chunks)
+    await cache_set("rag", cache_key, {"answer": result.answer})
+    return result
 
 
 async def run_research(
@@ -91,17 +109,17 @@ async def run_research(
             queries.append(normalized)
 
     chunks_by_id: dict[str, RetrievedChunk] = {}
-    for query in queries[:3]:
-        for chunk in await retrieve(query, db, user_id, collection_id=collection_id):
-            chunks_by_id.setdefault(chunk.chunk_id, chunk)
+    try:
+        for query in queries[:3]:
+            for chunk in await retrieve(query, db, user_id, collection_id=collection_id):
+                chunks_by_id.setdefault(chunk.chunk_id, chunk)
+    except Exception:
+        pass
     chunks = await rerank(question, list(chunks_by_id.values()))
     chunks = chunks[: settings.top_k]
 
     if not chunks:
-        return RAGResult(
-            answer="I couldn't find any relevant information in your documents to answer that question.",
-            sources=[],
-        )
+        return RAGResult(answer=await _general_answer(question), sources=[])
 
     context = "\n\n---\n\n".join(
         f"[{index}] Source: {chunk.metadata.get('filename', 'document')}"

@@ -10,6 +10,7 @@ from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
 from app.core.middleware import RequestIDMiddleware
 from app.db.database import close_db, get_database
+from app.db.redis_client import connect_redis, close_redis
 from app.db.vector_store import close_vector_store
 from app.utils.exceptions import AppError
 
@@ -21,6 +22,7 @@ settings = get_settings()
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     setup_logging(debug=settings.debug)
     logger.info("Starting RAG application", extra={"version": settings.app_version})
+    await connect_redis()
     # Create MongoDB indexes on startup
     db = get_database()
     await db["users"].create_index("email", unique=True)
@@ -48,6 +50,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await db["workspace_invitations"].create_index("expires_at", expireAfterSeconds=0)
     yield
     await close_db()
+    await close_redis()
     await close_vector_store()
     logger.info("Shutting down RAG application")
 

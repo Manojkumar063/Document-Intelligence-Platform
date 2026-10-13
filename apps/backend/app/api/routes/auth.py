@@ -2,6 +2,8 @@ from fastapi import APIRouter, Response
 
 from app.api.deps import DBSession
 from app.core.config import get_settings
+from app.core.security import decode_access_token
+from app.db.redis_client import blacklist_token
 from app.schemas.auth import LoginRequest, TokenResponse
 from app.schemas.user import UserCreate, UserResponse
 from app.services.auth_service import AuthService
@@ -35,8 +37,17 @@ async def login(body: LoginRequest, db: DBSession, response: Response) -> TokenR
 
 
 @router.post("/logout", status_code=204)
-async def logout(response: Response) -> None:
+async def logout(response: Response, session_token: str | None = None) -> None:
     settings = get_settings()
+    if session_token:
+        try:
+            payload = decode_access_token(session_token)
+            exp = payload.get("exp", 0)
+            import time
+            ttl = max(int(exp - time.time()), 1)
+            await blacklist_token(session_token, ttl)
+        except Exception:
+            pass
     response.delete_cookie(
         key=COOKIE_NAME,
         httponly=True,
