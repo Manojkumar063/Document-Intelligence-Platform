@@ -33,25 +33,33 @@ def _build_llm() -> ChatOpenAI:
     )
 
 
+async def _general_answer(question: str) -> str:
+    llm = _build_llm()
+    response = await llm.ainvoke([
+        SystemMessage(content="You are a helpful assistant. Answer the user conversationally."),
+        HumanMessage(content=question),
+    ])
+    return str(response.content)
+
+
 async def run_rag(
     question: str,
     db: AsyncIOMotorDatabase,
     user_id: str,
     collection_id: str | None = None,
 ) -> RAGResult:
-    chunks = await retrieve(question, db, user_id, collection_id=collection_id)
-    chunks = await rerank(question, chunks)
+    try:
+        chunks = await retrieve(question, db, user_id, collection_id=collection_id)
+        chunks = await rerank(question, chunks)
+    except Exception:
+        chunks = []
 
     if not chunks:
-        return RAGResult(
-            answer="I couldn't find any relevant information in your documents to answer that question.",
-            sources=[],
-        )
+        return RAGResult(answer=await _general_answer(question), sources=[])
 
     context = "\n\n---\n\n".join(
         f"[{c.metadata.get('filename', 'document')}]\n{c.content}" for c in chunks
     )
-
     llm = _build_llm()
     messages = [
         SystemMessage(content=RAG_SYSTEM_PROMPT.format(context=context)),
@@ -91,17 +99,17 @@ async def run_research(
             queries.append(normalized)
 
     chunks_by_id: dict[str, RetrievedChunk] = {}
-    for query in queries[:3]:
-        for chunk in await retrieve(query, db, user_id, collection_id=collection_id):
-            chunks_by_id.setdefault(chunk.chunk_id, chunk)
+    try:
+        for query in queries[:3]:
+            for chunk in await retrieve(query, db, user_id, collection_id=collection_id):
+                chunks_by_id.setdefault(chunk.chunk_id, chunk)
+    except Exception:
+        pass
     chunks = await rerank(question, list(chunks_by_id.values()))
     chunks = chunks[: settings.top_k]
 
     if not chunks:
-        return RAGResult(
-            answer="I couldn't find any relevant information in your documents to answer that question.",
-            sources=[],
-        )
+        return RAGResult(answer=await _general_answer(question), sources=[])
 
     context = "\n\n---\n\n".join(
         f"[{index}] Source: {chunk.metadata.get('filename', 'document')}"
