@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Response
+from fastapi import APIRouter, Cookie, Response
 
 from app.api.deps import DBSession
 from app.core.config import get_settings
@@ -37,14 +37,16 @@ async def login(body: LoginRequest, db: DBSession, response: Response) -> TokenR
 
 
 @router.post("/logout", status_code=204)
-async def logout(response: Response, session_token: str | None = None) -> None:
+async def logout(
+    response: Response,
+    session_token: str | None = Cookie(default=None, alias="rag_access_token"),
+) -> None:
+    import time
     settings = get_settings()
     if session_token:
         try:
             payload = decode_access_token(session_token)
-            exp = payload.get("exp", 0)
-            import time
-            ttl = max(int(exp - time.time()), 1)
+            ttl = max(int(payload.get("exp", 0) - time.time()), 1)
             await blacklist_token(session_token, ttl)
         except Exception:
             pass

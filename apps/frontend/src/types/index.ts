@@ -10,6 +10,13 @@ export interface User {
   created_at: string;
 }
 
+export interface PipelineStage {
+  stage: string;
+  success_rate: number;
+  avg_time_ms: number;
+  p95_time_ms: number;
+}
+
 export interface AdminStats {
   total_users: number;
   active_users: number;
@@ -19,11 +26,15 @@ export interface AdminStats {
   processing_documents: number;
   completed_documents: number;
   failed_documents: number;
+  total_chunks: number;
   total_conversations: number;
   total_usage_events: number;
   usage_events_30d: number;
   chat_queries_30d: number;
   uploads_30d: number;
+  successful_responses_30d: number;
+  collections_count: number;
+  pipeline_stages: PipelineStage[];
 }
 
 export interface AppNotification {
