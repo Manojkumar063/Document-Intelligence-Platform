@@ -17,8 +17,8 @@ A production-oriented Retrieval-Augmented Generation application.
 cp apps/backend/.env.example apps/backend/.env
 # Edit apps/backend/.env — set LLM_API_KEY for AI and embedding features
 
-# 2. Start MongoDB, Qdrant, and the backend
-docker compose up mongodb qdrant backend
+# 2. Start MongoDB, Qdrant, Redis, and the backend
+docker compose up mongodb qdrant redis backend
 
 # 3. If upgrading an existing database, copy stored embeddings into Qdrant once
 docker compose exec backend python scripts/reindex_vectors.py
