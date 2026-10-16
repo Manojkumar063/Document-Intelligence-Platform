@@ -312,9 +312,28 @@ export default function AdminDashboardPage() {
             <p className="text-xs text-slate-400 mt-0.5">Monitor and optimize your Retrieval-Augmented Generation system</p>
           </div>
           <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300">
-              <span>📅</span> Last 24 hours <span className="ml-1 text-slate-500">▾</span>
-            </div>
+            <label className="flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-800 px-3 py-1.5 text-xs text-slate-300 focus-within:border-teal-500">
+              <span aria-hidden="true">📅</span>
+              <span className="sr-only">Dashboard time range</span>
+              <select
+                aria-label="Dashboard time range"
+                defaultValue="24h"
+                onChange={(event) => {
+                  const range = event.target.value;
+                  // The current admin stats API returns fixed-window aggregates.
+                  // Persist the selected UI range until the API supports filtering.
+                  localStorage.setItem("rag-dashboard-time-range", range);
+                }}
+                className="cursor-pointer appearance-none bg-transparent text-slate-200 outline-none"
+              >
+                <option value="1h" className="bg-slate-900">Last hour</option>
+                <option value="24h" className="bg-slate-900">Last 24 hours</option>
+                <option value="7d" className="bg-slate-900">Last 7 days</option>
+                <option value="30d" className="bg-slate-900">Last 30 days</option>
+                <option value="90d" className="bg-slate-900">Last 90 days</option>
+              </select>
+              <span className="ml-1 text-slate-500" aria-hidden="true">▾</span>
+            </label>
             <div className="flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-xs text-emerald-400">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
               System Status: Healthy
