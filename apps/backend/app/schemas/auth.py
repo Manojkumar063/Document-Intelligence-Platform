@@ -8,3 +8,10 @@ class LoginRequest(BaseModel):
 
 class SessionResponse(BaseModel):
     authenticated: bool = True
+
+
+# Kept for API consumers and existing tests. Browser login now uses SessionResponse
+# and receives the credential only through the HttpOnly cookie.
+class TokenResponse(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
