@@ -1,7 +1,8 @@
 """RAG workflow: retrieve relevant chunks → generate answer with LLM."""
+import json
 from dataclasses import dataclass
 
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
 from langchain_openai import ChatOpenAI
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pydantic import BaseModel, Field
@@ -11,6 +12,7 @@ from app.db.redis_client import cache_get, cache_set, is_rate_limited
 from app.rag.prompts import RAG_SYSTEM_PROMPT
 from app.rag.reranking import rerank
 from app.rag.retrieval import RetrievedChunk, retrieve
+from app.rag.tools import TOOL_SCHEMAS, execute_tool
 
 settings = get_settings()
 
@@ -77,6 +79,49 @@ async def run_rag(
     result = RAGResult(answer=str(response.content), sources=chunks)
     await cache_set("rag", cache_key, {"answer": result.answer})
     return result
+
+
+async def run_tool_agent(
+    question: str,
+    db: AsyncIOMotorDatabase,
+    user_id: str,
+    collection_id: str | None = None,
+) -> RAGResult:
+    """Agent loop: LLM decides which tools to call, executes them, then synthesizes a final answer."""
+    if await is_rate_limited(user_id):
+        return RAGResult(answer="You're sending messages too fast. Please wait a moment.", sources=[])
+
+    llm = _build_llm().bind_tools(TOOL_SCHEMAS)  # type: ignore[arg-type]
+    messages: list = [
+        SystemMessage(
+            content=(
+                "You are a helpful assistant with access to tools. "
+                "Use the available tools to answer the user's question accurately. "
+                "Call tools when needed, then synthesize a clear final answer."
+            )
+        ),
+        HumanMessage(content=question),
+    ]
+
+    for _ in range(5):  # max 5 tool-call rounds
+        response = await llm.ainvoke(messages)
+        messages.append(response)
+
+        tool_calls = getattr(response, "tool_calls", []) or []
+        if not tool_calls:
+            break
+
+        for call in tool_calls:
+            tool_result = await execute_tool(
+                name=call["name"],
+                args=call["args"],
+                db=db,
+                user_id=user_id,
+                collection_id=collection_id,
+            )
+            messages.append(ToolMessage(content=tool_result, tool_call_id=call["id"]))
+
+    return RAGResult(answer=str(response.content), sources=[])
 
 
 async def run_research(

@@ -25,7 +25,8 @@ class MessageResponse(BaseModel):
     content: str
     sources: list[dict] = []
     collection_id: str | None = None
-    agent_mode: Literal["chat", "research"] = "chat"
+    agent_mode: Literal["chat", "research", "agent"] = "chat"
+    tool_calls: list[dict] = []
     feedback: str | None = None
     created_at: datetime
 
@@ -37,13 +38,14 @@ class ConversationResponse(BaseModel):
     title: str
     created_at: datetime
     updated_at: datetime
+    pinned: bool = False
     messages: list[MessageResponse] = []
 
 
 class ChatRequest(BaseModel):
     message: str
     collection_id: str | None = None
-    agent_mode: Literal["chat", "research"] = "chat"
+    agent_mode: Literal["chat", "research", "agent"] = "chat"
 
 
 class MessageFeedback(BaseModel):

@@ -17,8 +17,8 @@ A production-oriented Retrieval-Augmented Generation application.
 cp apps/backend/.env.example apps/backend/.env
 # Edit apps/backend/.env — set LLM_API_KEY for AI and embedding features
 
-# 2. Start MongoDB, Qdrant, and the backend
-docker compose up mongodb qdrant backend
+# 2. Start MongoDB, Qdrant, Redis, and the backend
+docker compose up mongodb qdrant redis backend
 
 # 3. If upgrading an existing database, copy stored embeddings into Qdrant once
 docker compose exec backend python scripts/reindex_vectors.py
@@ -56,6 +56,17 @@ uvicorn app.main:app --reload --port 8000
 
 Runs at → `http://localhost:8000`
 API docs at → `http://localhost:8000/docs`
+
+### Backend logs
+
+The backend writes structured JSON logs to standard output. Each completed HTTP
+request includes its request ID, method, path, status code, and duration; query
+strings and request bodies are not included. The request ID is also returned in
+the `X-Request-ID` response header and can be supplied with that request header
+to correlate application logs.
+
+When running locally, logs appear in the Uvicorn terminal. With Docker Compose,
+use `docker compose logs -f backend`.
 
 ### 2. Frontend (RAG app)
 

@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     # JWT
     jwt_secret: str
     jwt_algorithm: str = "HS256"
-    jwt_access_token_expire_minutes: int = 60 * 24
+    jwt_access_token_expire_minutes: int = 30
 
     # LLM
     llm_provider: str = "openai"
@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.0
     llm_max_tokens: int = 2048
+    llm_input_cost_per_million_tokens: float = 0.15
+    llm_output_cost_per_million_tokens: float = 0.60
+    embedding_cost_per_million_tokens: float = 0.02
+    default_monthly_budget_usd: float = 25.0
+    default_user_monthly_token_quota: int = 500000
+    default_user_requests_per_minute: int = 20
 
     # Embeddings
     embedding_provider: str = "openai"
@@ -66,6 +72,8 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 3600
     rate_limit_requests: int = 20
     rate_limit_window_seconds: int = 60
+    auth_rate_limit_requests: int = 10
+    auth_rate_limit_window_seconds: int = 60
 
     # CORS
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:3001"]
@@ -76,6 +84,12 @@ class Settings(BaseSettings):
             raise ValueError("S3_BUCKET is required when STORAGE_BACKEND=s3")
         if bool(self.aws_access_key_id) != bool(self.aws_secret_access_key):
             raise ValueError("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set together")
+        if self.environment.lower() == "production" and not self.redis_enabled:
+            raise ValueError("Redis must be enabled in production for session revocation and authentication rate limiting")
+        if self.jwt_access_token_expire_minutes < 1:
+            raise ValueError("JWT access-token lifetime must be at least one minute")
+        if self.auth_rate_limit_requests < 1 or self.auth_rate_limit_window_seconds < 1:
+            raise ValueError("Authentication rate limits must be positive")
         return self
 
 

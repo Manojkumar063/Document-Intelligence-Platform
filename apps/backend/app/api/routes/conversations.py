@@ -1,4 +1,5 @@
 from typing import Literal
+from time import perf_counter
 
 from fastapi import APIRouter
 
@@ -27,12 +28,18 @@ async def _generate_answer(
     collection_id: str | None,
     user_id: str,
     db: DBSession,
-    agent_mode: Literal["chat", "research"] = "chat",
+    agent_mode: Literal["chat", "research", "agent"] = "chat",
 ) -> tuple[str, list[SourceReference]]:
     if agent_mode == "research":
         from app.rag.workflows import run_research
 
         result = await run_research(
+            question=question, db=db, user_id=user_id, collection_id=collection_id
+        )
+    elif agent_mode == "agent":
+        from app.rag.workflows import run_tool_agent
+
+        result = await run_tool_agent(
             question=question, db=db, user_id=user_id, collection_id=collection_id
         )
     else:
@@ -42,7 +49,6 @@ async def _generate_answer(
             user_id=user_id,
             collection_id=collection_id,
         )
-    await UsageRepository(db).record(user_id, "chat_query")
     sources = [
         SourceReference(
             chunk_id=chunk.chunk_id,
@@ -54,7 +60,13 @@ async def _generate_answer(
         )
         for chunk in result.sources
     ]
-    return result.answer, sources
+    if not sources:
+        answer = (
+            "I couldn't find supporting information for this question in the available documents. "
+            "Try selecting a different collection, checking that your documents finished indexing, "
+            "or asking a more specific question. I don't want to guess without evidence from your files."
+        )
+    return result.answer if sources else answer, sources
 
 
 @router.post("", response_model=ConversationResponse, status_code=201)
@@ -97,6 +109,20 @@ async def rename_conversation(
     return ConversationResponse.model_validate(conv)
 
 
+@router.patch("/{conv_id}/pin", response_model=ConversationResponse)
+async def pin_conversation(
+    conv_id: str, body: dict, user_id: CurrentUserID, db: DBSession
+) -> ConversationResponse:
+    pinned = body.get("pinned")
+    if not isinstance(pinned, bool):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="pinned must be a boolean")
+    conv = await ConversationRepository(db).set_pinned(conv_id, user_id, pinned)
+    if not conv:
+        raise NotFoundError("Conversation", conv_id)
+    return ConversationResponse.model_validate(conv)
+
+
 @router.post("/{conv_id}/messages", response_model=ChatResponse)
 async def chat(
     conv_id: str, body: ChatRequest, user_id: CurrentUserID, db: DBSession
@@ -108,14 +134,42 @@ async def chat(
 
     if body.collection_id and not await CollectionRepository(db).get_by_id(body.collection_id):
         raise NotFoundError("Collection", body.collection_id)
+    if conv.title.strip().lower() in {"new chat", "new conversation"}:
+        generated_title = " ".join(body.message.split()).strip()
+        if len(generated_title) > 52:
+            generated_title = generated_title[:49].rstrip() + "..."
+        if generated_title:
+            await repo.update_title(conv_id, generated_title)
+
     await repo.add_message(
         conv_id,
         role="user",
         content=body.message,
         collection_id=body.collection_id,
     )
-    answer, sources = await _generate_answer(
-        body.message, body.collection_id, user_id, db, body.agent_mode
+    started_at = perf_counter()
+    try:
+        answer, sources = await _generate_answer(
+            body.message, body.collection_id, user_id, db, body.agent_mode
+        )
+    except Exception as exc:
+        elapsed_ms = round((perf_counter() - started_at) * 1000)
+        await UsageRepository(db).record(
+            user_id, "chat_query_failed",
+            conversation_id=conv_id,
+            latency_ms=elapsed_ms,
+            error_type=type(exc).__name__,
+            agent_mode=body.agent_mode,
+        )
+        raise
+    elapsed_ms = round((perf_counter() - started_at) * 1000)
+    await UsageRepository(db).record(
+        user_id, "chat_query",
+        conversation_id=conv_id,
+        latency_ms=elapsed_ms,
+        source_count=len(sources),
+        answer_chars=len(answer),
+        agent_mode=body.agent_mode,
     )
 
     assistant_msg = await repo.add_message(

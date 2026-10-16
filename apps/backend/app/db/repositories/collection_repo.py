@@ -17,7 +17,7 @@ class CollectionRepository:
         return Collection.from_doc(doc) if doc else None
 
     async def list_all(self, shared_only: bool = False) -> list[tuple[Collection, int]]:
-        cursor = (await self.col.find({})).sort("name", 1)
+        cursor = self.col.find({}).sort("name", 1)
         results: list[tuple[Collection, int]] = []
         async for raw in cursor:
             collection = Collection.from_doc(raw)

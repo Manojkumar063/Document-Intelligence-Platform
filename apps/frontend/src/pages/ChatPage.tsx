@@ -5,28 +5,30 @@ import {
   deleteConversation,
   getConversation,
   listCollections,
+  listDocuments,
   listConversations,
   openDocumentSource,
+  pinConversation,
   rateMessage,
   regenerateMessage,
   renameConversation,
   sendMessage,
 } from "../api/client";
-import type { AgentMode, Collection, Conversation, Message, SourceReference } from "../types";
+import type { AgentMode, Collection, Conversation, Document, Message, SourceReference } from "../types";
 
 function groupHistory(conversations: Conversation[], query: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const groups = new Map<string, Conversation[]>();
-  const filtered = conversations.filter((conversation) =>
-    conversation.title.toLowerCase().includes(query.trim().toLowerCase())
-  );
+  const filtered = conversations
+    .filter((conversation) => conversation.title.toLowerCase().includes(query.trim().toLowerCase()))
+    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
 
   for (const conversation of filtered) {
     const updated = new Date(conversation.updated_at || conversation.created_at);
     updated.setHours(0, 0, 0, 0);
     const daysAgo = Math.floor((today.getTime() - updated.getTime()) / 86_400_000);
-    const label = daysAgo <= 0 ? "Today" : daysAgo === 1 ? "Yesterday" : daysAgo < 7 ? "Previous 7 days" : "Older";
+    const label = conversation.pinned ? "Pinned" : daysAgo <= 0 ? "Today" : daysAgo === 1 ? "Yesterday" : daysAgo < 7 ? "Previous 7 days" : "Older";
     groups.set(label, [...(groups.get(label) ?? []), conversation]);
   }
 
@@ -75,7 +77,10 @@ export default function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [scopePickerOpen, setScopePickerOpen] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentMode>("chat");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -85,6 +90,7 @@ export default function ChatPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pinningId, setPinningId] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
@@ -97,6 +103,7 @@ export default function ChatPage() {
   const selectionRef = useRef(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -109,6 +116,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     listCollections().then((response) => setCollections(response.data)).catch(() => undefined);
+    listDocuments().then((response) => setDocuments(response.data)).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -177,17 +185,23 @@ export default function ChatPage() {
     const selection = selectionRef.current;
     setInput("");
     setSending(true);
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     try {
-      const res = await sendMessage(conversationId, question, selectedCollectionId || undefined, agentMode);
+      const res = await sendMessage(conversationId, question, selectedCollectionId || undefined, agentMode, controller.signal);
       if (selectionRef.current === selection) setMessages((m) => [...m, res.data.message]);
       setConversations((current) => {
         const conversation = current.find((item) => item.id === conversationId);
         if (!conversation) return current;
-        const updated = { ...conversation, updated_at: new Date().toISOString() };
+        const generatedTitle = conversation.title === "New Chat" || conversation.title === "New Conversation"
+          ? (question.length > 52 ? question.slice(0, 49).trimEnd() + "..." : question)
+          : conversation.title;
+        const updated = { ...conversation, title: generatedTitle, updated_at: new Date().toISOString() };
         return [updated, ...current.filter((item) => item.id !== conversationId)];
       });
-    } catch {
-      if (selectionRef.current === selection) {
+    } catch (error) {
+      const cancelled = error instanceof DOMException && error.name === "AbortError";
+      if (!cancelled && selectionRef.current === selection) {
         setMessages((m) => [
           ...m,
           {
@@ -199,8 +213,15 @@ export default function ChatPage() {
         ]);
       }
     } finally {
+      if (requestControllerRef.current === controller) requestControllerRef.current = null;
       setSending(false);
     }
+  };
+
+  const stopGeneration = () => {
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    setSending(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -288,6 +309,19 @@ export default function ChatPage() {
     }
   };
 
+  const handlePin = async (conversation: Conversation) => {
+    setPinningId(conversation.id);
+    setHistoryError("");
+    try {
+      const response = await pinConversation(conversation.id, !conversation.pinned);
+      setConversations((current) => current.map((item) => item.id === conversation.id ? response.data : item));
+    } catch (err: any) {
+      setHistoryError(err.response?.data?.error?.message || "Could not update pinned conversation");
+    } finally {
+      setPinningId(null);
+    }
+  };
+
   const beginRename = (conversation: Conversation) => {
     setHistoryError("");
     setRenameId(conversation.id);
@@ -358,7 +392,12 @@ export default function ChatPage() {
           {loadingHistory ? (
             <p className="text-slate-500 text-xs text-center py-6">Loading history…</p>
           ) : conversations.length === 0 ? (
-            <p className="text-slate-600 text-xs text-center py-6">No conversations yet</p>
+            <div className="flex flex-col items-center px-4 py-8 text-center">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 text-slate-500"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M8 10h8m-8 4h5m-9 6 1.5-4A8 8 0 1 1 20 16.5" /></svg></div>
+              <p className="text-xs font-medium text-slate-300">Your conversations will appear here</p>
+              <p className="mt-1 text-[11px] leading-5 text-slate-500">Start a chat to ask questions about your documents.</p>
+              <button type="button" onClick={() => void newConversation()} disabled={creating} className="mt-3 text-xs font-medium text-indigo-300 hover:text-indigo-200 disabled:opacity-50">Start your first chat</button>
+            </div>
           ) : historyGroups.length === 0 ? (
             <p className="text-slate-500 text-xs text-center py-6">No matches found</p>
           ) : historyGroups.map(([label, group]) => (
@@ -401,6 +440,9 @@ export default function ChatPage() {
                           <span className="truncate text-xs">{conversation.title}</span>
                         </button>
                         <div className="flex shrink-0 items-center sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                          <button type="button" onClick={() => void handlePin(conversation)} disabled={pinningId === conversation.id} title={conversation.pinned ? "Unpin conversation" : "Pin conversation"} aria-label={conversation.pinned ? `Unpin ${conversation.title}` : `Pin ${conversation.title}`} className={`rounded p-1 disabled:opacity-40 ${conversation.pinned ? "text-teal-300" : "text-slate-500 hover:text-white"}`}>
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m16 3 5 5-4 1-4 4v5l-2 2-2-7-7-2 2-2h5l4-4 3-2Z" /></svg>
+                          </button>
                           <button type="button" onClick={() => beginRename(conversation)} title="Rename conversation" aria-label={`Rename ${conversation.title}`} className="rounded p-1 text-slate-500 hover:text-white">
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m16.862 4.487 1.687-1.687a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 7.125 16.875 4.5" /></svg>
                           </button>
@@ -444,8 +486,31 @@ export default function ChatPage() {
               <p className="text-slate-600 text-sm mt-1">Create a new chat or select one from the sidebar</p>
             </div>
           ) : messages.length === 0 && !sending ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <p className="text-slate-500 text-sm">Ask anything about your uploaded documents</p>
+            <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col items-center justify-center py-8 text-center">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-teal-500/20 bg-teal-500/10">
+                <svg className="h-7 w-7 text-teal-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M8 5.5A2.5 2.5 0 0 1 10.5 3h7A2.5 2.5 0 0 1 20 5.5v11a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 8 16.5v-11ZM4 7v12a2 2 0 0 0 2 2h9M11 8h5m-5 4h5m-5 4h3" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">What would you like to explore?</h2>
+              <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">Ask questions, discover insights, and understand your documents with AI.</p>
+              <div className="mt-7 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-2">
+                {[
+                  { title: "Summarize my documents", description: "Get the key points and main takeaways.", prompt: "Summarize my documents. Highlight the key points and main takeaways.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M7 3.75h7l4 4V20a.75.75 0 0 1-.75.75h-9.5A.75.75 0 0 1 7 20V3.75ZM14 4v4h4M10 12h5m-5 3h5" /> },
+                  { title: "Compare two documents", description: "Find similarities and important differences.", prompt: "Compare two documents in my available files. Highlight the key similarities and differences, and cite the sources.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M8 7H4m0 0 2.5-2.5M4 7l2.5 2.5M16 17h4m0 0-2.5-2.5M20 17l-2.5 2.5M6 12h12" /> },
+                  { title: "Find key risks and action items", description: "Identify concerns, deadlines, and next steps.", prompt: "Review my available documents and identify key risks, deadlines, and action items. Cite the supporting sources.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M12 3.5 21 20H3L12 3.5ZM12 9v4m0 3h.01" /> },
+                  { title: "Explain a topic from my files", description: "Understand a concept using your sources.", prompt: "Explain an important topic covered in my documents in simple terms, using examples and citing the sources.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M9.5 18h5m-4.5 3h4m-2-18a6 6 0 0 0-3.8 10.64c.9.72 1.3 1.45 1.3 2.36h5c0-.91.4-1.64 1.3-2.36A6 6 0 0 0 12 3Z" /> },
+                ].map((item) => (
+                  <button key={item.title} type="button" onClick={() => { setInput(item.prompt); inputRef.current?.focus(); }}
+                    className="group flex min-h-[112px] items-start gap-3 rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 text-left transition-colors hover:border-teal-500/50 hover:bg-slate-800/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500/10 text-teal-300 transition-colors group-hover:bg-teal-500/15">
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">{item.icon}</svg>
+                    </span>
+                    <span className="min-w-0"><span className="block text-sm font-medium text-slate-100">{item.title}</span><span className="mt-1.5 block text-xs leading-5 text-slate-400">{item.description}</span></span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-5 text-xs text-slate-500">Choose a suggestion to add it to your message, then send when you’re ready.</p>
             </div>
           ) : (
             <>
@@ -467,25 +532,36 @@ export default function ChatPage() {
                         Research agent
                       </span>
                     )}
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className="w-full space-y-2">
-                        {msg.sources.map((source, index) => (
-                          <article key={source.chunk_id} className="max-w-xl rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-3">
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="min-w-0 truncate text-xs font-semibold text-slate-200">
-                                <span className="mr-2 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-indigo-300">[{index + 1}]</span>
-                                {source.filename}
-                              </p>
-                              {source.page != null && <span className="shrink-0 text-[11px] text-slate-500">Page {source.page}</span>}
-                            </div>
-                            {source.snippet && <blockquote className="mt-2 line-clamp-4 border-l-2 border-indigo-500/70 pl-3 text-xs leading-relaxed text-slate-400">“{source.snippet}”</blockquote>}
-                            <button type="button" onClick={() => void handleOpenSource(source)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-indigo-300 hover:text-indigo-200">
-                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M14 3h7v7m-1-6L10 14M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
-                              Open Source
-                            </button>
-                          </article>
-                        ))}
-                      </div>
+                    {msg.role === "assistant" && !msg.id.startsWith("error-") && (
+                      msg.sources && msg.sources.length > 0 ? (
+                        <section className="w-full max-w-xl space-y-2" aria-label="Answer sources">
+                          <div className="flex items-center gap-2 px-1 text-xs font-medium text-teal-300">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m5 12 4 4L19 6" /></svg>
+                            Sources used ({msg.sources.length})
+                          </div>
+                          {msg.sources.map((source, index) => (
+                            <article key={source.chunk_id} className="rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="min-w-0 break-words text-xs font-semibold text-slate-200">
+                                  <span className="mr-2 rounded bg-teal-500/10 px-1.5 py-0.5 text-[10px] text-teal-300">[{index + 1}]</span>
+                                  {source.filename || "Source document"}
+                                </p>
+                                {source.page != null && <span className="shrink-0 text-[11px] text-slate-400">Page {source.page}</span>}
+                              </div>
+                              {source.snippet && <blockquote className="mt-2 line-clamp-4 border-l-2 border-teal-500/60 pl-3 text-xs leading-relaxed text-slate-400">“{source.snippet}”</blockquote>}
+                              <button type="button" onClick={() => void handleOpenSource(source)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-teal-300 hover:text-teal-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 rounded">
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M14 3h7v7m-1-6L10 14M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
+                                Open source document
+                              </button>
+                            </article>
+                          ))}
+                        </section>
+                      ) : (
+                        <div role="note" className="flex max-w-xl items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2.5 text-xs leading-5 text-amber-200/90">
+                          <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 9v3m0 4h.01M10.3 3.86 2.9 16.7A1.5 1.5 0 0 0 4.2 19h15.6a1.5 1.5 0 0 0 1.3-2.3L13.7 3.86a2 2 0 0 0-3.4 0Z" /></svg>
+                          <span>No supporting document passages were retrieved for this answer. Treat it as unverified; try narrowing the search scope or asking about a specific uploaded document.</span>
+                        </div>
+                      )
                     )}
                     {msg.role === "assistant" && !msg.id.startsWith("error-") && (
                       <div className="flex flex-wrap items-center gap-1 px-1 pt-1">
@@ -521,16 +597,40 @@ export default function ChatPage() {
           <div className="px-6 py-4 border-t border-slate-700/60 bg-slate-900/50 backdrop-blur">
             <div className="mb-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
               <label className="flex items-center gap-2">
-                Search scope
+                Select collection
                 <select
                   value={selectedCollectionId}
-                  onChange={(event) => setSelectedCollectionId(event.target.value)}
+                  onChange={(event) => { setSelectedCollectionId(event.target.value); setSelectedDocumentIds([]); }}
                   className="max-w-[240px] rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
                 >
                   <option value="">All available documents</option>
                   {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
                 </select>
               </label>
+              <div className="relative">
+                <button type="button" onClick={() => setScopePickerOpen((open) => !open)} aria-expanded={scopePickerOpen} className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 hover:border-indigo-500">
+                  Choose documents ({selectedDocumentIds.length || "All"})
+                </button>
+                {scopePickerOpen && <div className="absolute bottom-full left-0 z-20 mb-2 max-h-64 w-72 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-2 shadow-xl">
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <span className="text-xs font-medium text-slate-200">Available documents</span>
+                    <button type="button" onClick={() => setSelectedDocumentIds([])} className="text-[11px] text-indigo-300 hover:text-indigo-200">Clear</button>
+                  </div>
+                  <p className="px-1 pb-2 text-[11px] text-slate-500">{documents.filter((doc) => doc.status === "completed" && (!selectedCollectionId || doc.collection_id === selectedCollectionId)).length} indexed and ready to search</p>
+                  {documents.filter((doc) => !selectedCollectionId || doc.collection_id === selectedCollectionId).map((doc) => (
+                    <label key={doc.id} className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-2 hover:bg-slate-800">
+                      <input type="checkbox" checked={selectedDocumentIds.includes(doc.id)} disabled={doc.status !== "completed"} onChange={(event) => setSelectedDocumentIds((current) => event.target.checked ? [...current, doc.id] : current.filter((id) => id !== doc.id))} className="mt-0.5 accent-indigo-500" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block break-words text-xs text-slate-200">{doc.original_name}</span>
+                        <span className={`mt-0.5 block text-[10px] ${doc.status === "completed" ? "text-teal-300" : doc.status === "failed" ? "text-red-300" : "text-amber-300"}`}>{doc.status === "completed" ? "Indexed and ready" : doc.status === "failed" ? `Indexing failed${doc.error_message ? `: ${doc.error_message}` : ""}` : "Still processing — not searchable yet"}</span>
+                      </span>
+                    </label>
+                  ))}
+                  {documents.filter((doc) => !selectedCollectionId || doc.collection_id === selectedCollectionId).length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-500">No documents in this scope.</p>}
+                </div>}
+              </div>
+              {selectedDocumentIds.length > 0 && <div className="flex flex-wrap gap-1.5">{selectedDocumentIds.map((id) => { const doc = documents.find((item) => item.id === id); return doc ? <span key={id} className="inline-flex max-w-[220px] items-center gap-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] text-indigo-200"><span className="truncate">{doc.original_name}</span><button type="button" onClick={() => setSelectedDocumentIds((current) => current.filter((item) => item !== id))} aria-label={`Remove ${doc.original_name} from selection`} className="text-indigo-300 hover:text-white">×</button></span> : null; })}</div>}
+              <span className="text-[11px] text-slate-500">{documents.filter((doc) => doc.status === "completed" && (!selectedCollectionId || doc.collection_id === selectedCollectionId)).length} indexed documents</span>
               <label className="flex items-center gap-2">
                 Answer mode
                 <select
@@ -555,15 +655,15 @@ export default function ChatPage() {
                 className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 resize-none focus:outline-none max-h-32"
                 style={{ lineHeight: "1.5" }}
               />
-              <button
-                onClick={handleSend}
-                disabled={sending || !input.trim()}
-                className="shrink-0 w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
-              >
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
+              {sending ? (
+                <button type="button" onClick={stopGeneration} className="shrink-0 h-8 px-3 flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg" aria-label="Stop response" title="Stop response">
+                  <span className="inline-block h-2.5 w-2.5 rounded-sm bg-white" />Stop
+                </button>
+              ) : (
+                <button type="button" onClick={() => void handleSend()} disabled={!input.trim()} className="shrink-0 w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors" aria-label="Send message">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </button>
+              )}
             </div>
             <p className="text-slate-600 text-xs mt-2 text-center">Enter to send · Shift+Enter for new line</p>
           </div>

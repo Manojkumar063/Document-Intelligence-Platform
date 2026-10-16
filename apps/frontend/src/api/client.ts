@@ -3,18 +3,12 @@ import type { AdminStats, AgentMode, AppNotification, Collection, CollectionDeta
 
 const api = axios.create({ baseURL: "http://localhost:8000/api/v1", withCredentials: true });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
 // Auth
 export const register = (email: string, password: string, full_name: string) =>
-  api.post<{ access_token: string; token_type: string }>("/auth/register", { email, password, full_name });
+  api.post<User>("/auth/register", { email, password, full_name });
 
 export const login = (email: string, password: string) =>
-  api.post<{ access_token: string; token_type: string }>("/auth/login", { email, password });
+  api.post<{ authenticated: boolean }>("/auth/login", { email, password });
 export const logout = () => api.post("/auth/logout");
 
 // Users
@@ -23,6 +17,7 @@ export const updateMe = (full_name: string) => api.patch<User>("/users/me", { fu
 export const listUsers = () => api.get<User[]>("/users");
 export const updateUserRole = (id: string, role: UserRole) =>
   api.patch<User>(`/users/${encodeURIComponent(id)}/role`, { role });
+export const deleteUser = (id: string) => api.delete(`/users/${encodeURIComponent(id)}`);
 export const getAdminStats = () => api.get<AdminStats>("/admin/stats");
 export const getNotifications = () => api.get<NotificationList>("/notifications");
 export const markNotificationRead = (id: string) =>
@@ -84,10 +79,20 @@ export const getConversation = (id: string) =>
 export const renameConversation = (id: string, title: string) =>
   api.patch<Conversation>(`/conversations/${encodeURIComponent(id)}`, { title });
 
-export const sendMessage = (conv_id: string, message: string, collection_id?: string, agent_mode: AgentMode = "chat") =>
+export const pinConversation = (id: string, pinned: boolean) =>
+  api.patch<Conversation>(`/conversations/${encodeURIComponent(id)}/pin`, { pinned });
+
+export const sendMessage = (
+  conv_id: string,
+  message: string,
+  collection_id?: string,
+  agent_mode: AgentMode = "chat",
+  signal?: AbortSignal,
+) =>
   api.post<{ conversation_id: string; message: Message; sources: SourceReference[] }>(
-    `/conversations/${conv_id}/messages`,
-    { message, collection_id, agent_mode }
+    `/conversations/${encodeURIComponent(conv_id)}/messages`,
+    { message, collection_id, agent_mode },
+    { signal },
   );
 
 export const regenerateMessage = (conversationId: string, messageId: string) =>
@@ -105,3 +110,63 @@ export const openDocumentSource = (documentId: string) =>
   api.get<Blob>(`/documents/${encodeURIComponent(documentId)}/file`, { responseType: "blob" });
 
 export const deleteConversation = (id: string) => api.delete(`/conversations/${encodeURIComponent(id)}`);
+
+
+export interface RAGEvaluationHistoryItem {
+  id: string;
+  created_at: string | null;
+  case_count: number;
+  precision_at_k: number | null;
+  recall_at_k: number | null;
+  answer_relevance: number | null;
+  faithfulness: number | null;
+}
+export interface RAGEvaluationDashboard {
+  days: number;
+  successful_queries: number;
+  failed_queries: number;
+  average_latency_ms: number | null;
+  p95_latency_ms: number | null;
+  prompt_tokens: number;
+  completion_tokens: number;
+  positive_feedback: number;
+  negative_feedback: number;
+  precision_at_k: number | null;
+  recall_at_k: number | null;
+  answer_relevance: number | null;
+  faithfulness: number | null;
+  quality_metrics_note: string;
+  history: RAGEvaluationHistoryItem[];
+}
+export const getRAGEvaluation = (days = 30) =>
+  api.get<RAGEvaluationDashboard>(`/admin/evaluation?days=${days}`);
+
+
+export interface MyUsage {
+  period_start: string;
+  requests: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  embedding_tokens: number;
+  total_tokens: number;
+  estimated_cost_usd: number;
+  monthly_budget_usd: number;
+  budget_used_percent: number;
+  monthly_token_quota: number;
+  token_quota_used_percent: number;
+  requests_per_minute_limit: number;
+  pricing_note: string;
+}
+export interface UsageByUser {
+  user_id: string;
+  requests: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  embedding_tokens: number;
+  total_tokens: number;
+  estimated_cost_usd: number;
+}
+export const getMyUsage = () => api.get<MyUsage>("/usage/me");
+export const getUsageByUser = (days = 30) => api.get<{days:number;users:UsageByUser[]}>(`/usage/admin?days=${days}`);
+export const updateUserBudget = (userId: string, monthly_budget_usd: number, monthly_token_quota: number, requests_per_minute: number) =>
+  api.put(`/usage/admin/budgets/${encodeURIComponent(userId)}`, { monthly_budget_usd, monthly_token_quota, requests_per_minute });

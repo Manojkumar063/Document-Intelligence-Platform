@@ -1,4 +1,5 @@
 """Document ingestion service: save → load → chunk → embed → store."""
+import hashlib
 import logging
 import uuid
 
@@ -39,18 +40,25 @@ class DocumentService:
         original_name: str,
         content: bytes,
         mime_type: str,
-    ) -> Document:
+    ) -> tuple[Document, bool]:
+        """Returns (document, is_duplicate). is_duplicate=True means same content already exists."""
+        content_hash = hashlib.sha256(content).hexdigest()
+        existing = await self.repo.get_by_hash(content_hash)
+        if existing:
+            return existing, True
+
         unique_name = f"{uuid.uuid4()}_{original_name}"
         file_path = await storage.save(user_id, unique_name, content, mime_type)
-
-        return await self.repo.create(
+        doc = await self.repo.create(
             user_id=user_id,
             filename=unique_name,
             original_name=original_name,
             file_path=file_path,
             file_size=len(content),
             mime_type=mime_type,
+            content_hash=content_hash,
         )
+        return doc, False
 
     async def save_new_version(
         self,
