@@ -135,3 +135,37 @@ body {
 textarea {
   field-sizing: content;
 }
+
+
+/* Shared light workspace design system */
+body {
+  background-color: #f6f8f7;
+  color: #0f172a;
+}
+.bg-slate-950 {
+  background-color: #f6f8f7 !important;
+  background-image: radial-gradient(rgb(15 118 110 / 0.07) 0.7px, transparent 0.7px);
+  background-size: 22px 22px;
+}
+.bg-slate-900 { background-color: #ffffff !important; }
+.bg-slate-900\/90 { background-color: rgb(255 255 255 / 0.96) !important; }
+.bg-slate-900\/80 { background-color: rgb(255 255 255 / 0.92) !important; }
+.bg-slate-900\/60, .bg-slate-900\/50 { background-color: rgb(255 255 255 / 0.86) !important; }
+.bg-slate-800, .bg-slate-800\/60 { background-color: #f1f5f9 !important; }
+.bg-slate-700 { background-color: #e2e8f0 !important; }
+.text-white { color: #0f172a !important; }
+.text-slate-100 { color: #1e293b !important; }
+.text-slate-200 { color: #334155 !important; }
+.text-slate-300 { color: #475569 !important; }
+.text-slate-400 { color: #64748b !important; }
+.text-slate-500 { color: #64748b !important; }
+.border-slate-700, .border-slate-700\/50, .border-slate-700\/60, .border-slate-600 { border-color: #e2e8f0 !important; }
+.divide-slate-800 > :not([hidden]) ~ :not([hidden]) { border-color: #e2e8f0 !important; }
+.hover\\:bg-slate-800:hover, .hover\\:bg-slate-700:hover { background-color: #f1f5f9 !important; }
+.hover\\:text-white:hover { color: #0f172a !important; }
+.bg-indigo-600 { background-color: #0f766e !important; }
+.hover\\:bg-indigo-500:hover { background-color: #115e59 !important; }
+.text-indigo-400, .text-indigo-300 { color: #0f766e !important; }
+.hover\\:text-indigo-300:hover, .hover\\:text-indigo-200:hover { color: #115e59 !important; }
+.border-indigo-500 { border-color: #0f766e !important; }
+input, textarea, select { color-scheme: light; }
