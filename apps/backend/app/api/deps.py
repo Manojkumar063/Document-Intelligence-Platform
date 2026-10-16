@@ -19,9 +19,10 @@ async def get_current_user_id(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
     session_token: Annotated[str | None, Cookie(alias="rag_access_token")] = None,
 ) -> str:
+    # Keep Bearer support for API clients; the browser uses only the HttpOnly cookie.
     token = session_token or (credentials.credentials if credentials else None)
     if token is None:
-        raise UnauthorizedError("Authorization header missing")
+        raise UnauthorizedError("Authentication required")
     if await is_token_blacklisted(token):
         raise UnauthorizedError("Token has been revoked")
     payload = decode_access_token(token)
