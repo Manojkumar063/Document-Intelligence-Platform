@@ -17,6 +17,7 @@ export const updateMe = (full_name: string) => api.patch<User>("/users/me", { fu
 export const listUsers = () => api.get<User[]>("/users");
 export const updateUserRole = (id: string, role: UserRole) =>
   api.patch<User>(`/users/${encodeURIComponent(id)}/role`, { role });
+export const deleteUser = (id: string) => api.delete(`/users/${encodeURIComponent(id)}`);
 export const getAdminStats = () => api.get<AdminStats>("/admin/stats");
 export const getNotifications = () => api.get<NotificationList>("/notifications");
 export const markNotificationRead = (id: string) =>
