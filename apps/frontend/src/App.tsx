@@ -8,6 +8,7 @@ import ChatPage from "./pages/ChatPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminSectionPage from "./pages/AdminSectionPage";
+import RAGEvaluationPage from "./pages/RAGEvaluationPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -27,6 +28,7 @@ export default function App() {
             <Route path="/admin/analytics" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
             <Route path="/admin/retrieval" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
             <Route path="/admin/generation" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
+            <Route path="/admin/evaluation" element={<ProtectedRoute adminOnly><RAGEvaluationPage /></ProtectedRoute>} />
             <Route path="/admin/data" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
             <Route path="/admin/feedback" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
             <Route path="/admin/alerts" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
