@@ -15,6 +15,10 @@ class DocumentRepository:
         doc = await self.col.find_one({"_id": doc_id})
         return Document.from_doc(doc) if doc else None
 
+    async def get_by_hash(self, content_hash: str) -> Document | None:
+        doc = await self.col.find_one({"content_hash": content_hash})
+        return Document.from_doc(doc) if doc else None
+
     async def get_by_user(self, user_id: str) -> list[Document]:
         cursor = self.col.find({"user_id": user_id}).sort("created_at", -1)
         return [Document.from_doc(d) async for d in cursor]
@@ -157,6 +161,7 @@ class DocumentRepository:
         file_path: str,
         file_size: int,
         mime_type: str,
+        content_hash: str | None = None,
     ) -> Document:
         doc = Document(
             user_id=user_id,
@@ -165,6 +170,7 @@ class DocumentRepository:
             file_path=file_path,
             file_size=file_size,
             mime_type=mime_type,
+            content_hash=content_hash,
         )
         await self.col.insert_one(doc.to_doc())
         return doc

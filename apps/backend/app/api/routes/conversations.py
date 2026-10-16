@@ -27,12 +27,18 @@ async def _generate_answer(
     collection_id: str | None,
     user_id: str,
     db: DBSession,
-    agent_mode: Literal["chat", "research"] = "chat",
+    agent_mode: Literal["chat", "research", "agent"] = "chat",
 ) -> tuple[str, list[SourceReference]]:
     if agent_mode == "research":
         from app.rag.workflows import run_research
 
         result = await run_research(
+            question=question, db=db, user_id=user_id, collection_id=collection_id
+        )
+    elif agent_mode == "agent":
+        from app.rag.workflows import run_tool_agent
+
+        result = await run_tool_agent(
             question=question, db=db, user_id=user_id, collection_id=collection_id
         )
     else:

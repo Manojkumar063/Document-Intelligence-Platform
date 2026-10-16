@@ -40,14 +40,15 @@ async def upload_document(
         raise ValidationError(f"File exceeds maximum size of {settings.max_file_size_mb} MB")
 
     svc = DocumentService(db)
-    doc = await svc.save_upload(
+    doc, is_duplicate = await svc.save_upload(
         user_id=user_id,
         original_name=file.filename or "upload",
         content=content,
         mime_type=file.content_type or "application/octet-stream",
     )
+    if is_duplicate:
+        return DocumentUploadResponse(document=DocumentResponse.model_validate(doc))
     await UsageRepository(db).record(user_id, "document_upload")
-
     background_tasks.add_task(svc.process_document, doc)
     return DocumentUploadResponse(document=DocumentResponse.model_validate(doc))
 

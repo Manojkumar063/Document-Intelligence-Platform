@@ -27,6 +27,7 @@ class Document:
     is_shared: bool = True
     version: int = 1
     collection_id: str | None = None
+    content_hash: str | None = None
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     processed_at: datetime | None = None
 
@@ -45,6 +46,7 @@ class Document:
             "is_shared": self.is_shared,
             "version": self.version,
             "collection_id": self.collection_id,
+            "content_hash": self.content_hash,
             "created_at": self.created_at,
             "processed_at": self.processed_at,
         }
@@ -65,6 +67,7 @@ class Document:
             is_shared=doc.get("is_shared", True),
             version=doc.get("version", 1),
             collection_id=doc.get("collection_id"),
+            content_hash=doc.get("content_hash"),
             created_at=doc.get("created_at", datetime.now(timezone.utc)),
             processed_at=doc.get("processed_at"),
         )
