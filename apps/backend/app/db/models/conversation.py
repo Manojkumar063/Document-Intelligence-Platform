@@ -51,6 +51,7 @@ class Conversation:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    pinned: bool = False
     messages: list[Message] = field(default_factory=list)
 
     def to_doc(self) -> dict:
@@ -60,6 +61,7 @@ class Conversation:
             "title": self.title,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "pinned": self.pinned,
         }
 
     @staticmethod
@@ -70,5 +72,6 @@ class Conversation:
             title=doc.get("title", "New Conversation"),
             created_at=doc.get("created_at", datetime.now(timezone.utc)),
             updated_at=doc.get("updated_at", datetime.now(timezone.utc)),
+            pinned=doc.get("pinned", False),
             messages=messages or [],
         )

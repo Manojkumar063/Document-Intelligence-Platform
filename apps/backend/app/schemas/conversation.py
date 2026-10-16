@@ -38,6 +38,7 @@ class ConversationResponse(BaseModel):
     title: str
     created_at: datetime
     updated_at: datetime
+    pinned: bool = False
     messages: list[MessageResponse] = []
 
 

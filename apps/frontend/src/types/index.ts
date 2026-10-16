@@ -114,5 +114,6 @@ export interface Conversation {
   title: string;
   created_at: string;
   updated_at: string;
+  pinned?: boolean;
   messages: Message[];
 }
