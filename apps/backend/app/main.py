@@ -32,6 +32,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await db["messages"].create_index("conversation_id")
     await db["notifications"].create_index([("user_id", 1), ("created_at", -1)])
     await db["usage_events"].create_index([("action", 1), ("created_at", -1)])
+    await db["usage_events"].create_index([("user_id", 1), ("created_at", -1)])
+    await db["usage_budgets"].create_index("user_id", unique=True)
     await db["document_versions"].create_index([("document_id", 1), ("version", -1)])
     await db["collections"].create_index("name_key", unique=True)
     await db["documents"].create_index("collection_id")
@@ -90,13 +92,14 @@ def create_app() -> FastAPI:
             content={"error": {"code": "INTERNAL_ERROR", "message": "An unexpected error occurred"}},
         )
 
-    from app.api.routes import admin, health, auth, users, documents, conversations, notifications, collections, workspace
+    from app.api.routes import admin, health, auth, users, documents, conversations, notifications, collections, workspace, usage
     app.include_router(health.router, prefix="/api/v1")
     app.include_router(auth.router, prefix="/api/v1")
     app.include_router(users.router, prefix="/api/v1")
     app.include_router(documents.router, prefix="/api/v1")
     app.include_router(conversations.router, prefix="/api/v1")
     app.include_router(admin.router, prefix="/api/v1")
+    app.include_router(usage.router, prefix="/api/v1")
     app.include_router(notifications.router, prefix="/api/v1")
     app.include_router(collections.router, prefix="/api/v1")
     app.include_router(workspace.router, prefix="/api/v1")

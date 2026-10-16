@@ -37,6 +37,12 @@ class Settings(BaseSettings):
     llm_model: str = "gpt-4o-mini"
     llm_temperature: float = 0.0
     llm_max_tokens: int = 2048
+    llm_input_cost_per_million_tokens: float = 0.15
+    llm_output_cost_per_million_tokens: float = 0.60
+    embedding_cost_per_million_tokens: float = 0.02
+    default_monthly_budget_usd: float = 25.0
+    default_user_monthly_token_quota: int = 500000
+    default_user_requests_per_minute: int = 20
 
     # Embeddings
     embedding_provider: str = "openai"

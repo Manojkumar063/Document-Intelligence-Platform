@@ -136,3 +136,33 @@ export interface RAGEvaluationDashboard {
 }
 export const getRAGEvaluation = (days = 30) =>
   api.get<RAGEvaluationDashboard>(`/admin/evaluation?days=${days}`);
+
+
+export interface MyUsage {
+  period_start: string;
+  requests: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  embedding_tokens: number;
+  total_tokens: number;
+  estimated_cost_usd: number;
+  monthly_budget_usd: number;
+  budget_used_percent: number;
+  monthly_token_quota: number;
+  token_quota_used_percent: number;
+  requests_per_minute_limit: number;
+  pricing_note: string;
+}
+export interface UsageByUser {
+  user_id: string;
+  requests: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  embedding_tokens: number;
+  total_tokens: number;
+  estimated_cost_usd: number;
+}
+export const getMyUsage = () => api.get<MyUsage>("/usage/me");
+export const getUsageByUser = (days = 30) => api.get<{days:number;users:UsageByUser[]}>(`/usage/admin?days=${days}`);
+export const updateUserBudget = (userId: string, monthly_budget_usd: number, monthly_token_quota: number, requests_per_minute: number) =>
+  api.put(`/usage/admin/budgets/${encodeURIComponent(userId)}`, { monthly_budget_usd, monthly_token_quota, requests_per_minute });
