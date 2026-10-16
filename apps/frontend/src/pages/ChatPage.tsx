@@ -5,6 +5,7 @@ import {
   deleteConversation,
   getConversation,
   listCollections,
+  listDocuments,
   listConversations,
   openDocumentSource,
   pinConversation,
@@ -13,7 +14,7 @@ import {
   renameConversation,
   sendMessage,
 } from "../api/client";
-import type { AgentMode, Collection, Conversation, Message, SourceReference } from "../types";
+import type { AgentMode, Collection, Conversation, Document, Message, SourceReference } from "../types";
 
 function groupHistory(conversations: Conversation[], query: string) {
   const today = new Date();
@@ -76,7 +77,10 @@ export default function ChatPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
   const [selectedCollectionId, setSelectedCollectionId] = useState("");
+  const [selectedDocumentIds, setSelectedDocumentIds] = useState<string[]>([]);
+  const [scopePickerOpen, setScopePickerOpen] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentMode>("chat");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -112,6 +116,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     listCollections().then((response) => setCollections(response.data)).catch(() => undefined);
+    listDocuments().then((response) => setDocuments(response.data)).catch(() => undefined);
   }, []);
 
   useEffect(() => {
@@ -592,16 +597,40 @@ export default function ChatPage() {
           <div className="px-6 py-4 border-t border-slate-700/60 bg-slate-900/50 backdrop-blur">
             <div className="mb-2 flex flex-wrap items-center gap-3 text-xs text-slate-500">
               <label className="flex items-center gap-2">
-                Search scope
+                Select collection
                 <select
                   value={selectedCollectionId}
-                  onChange={(event) => setSelectedCollectionId(event.target.value)}
+                  onChange={(event) => { setSelectedCollectionId(event.target.value); setSelectedDocumentIds([]); }}
                   className="max-w-[240px] rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200"
                 >
                   <option value="">All available documents</option>
                   {collections.map((collection) => <option key={collection.id} value={collection.id}>{collection.name}</option>)}
                 </select>
               </label>
+              <div className="relative">
+                <button type="button" onClick={() => setScopePickerOpen((open) => !open)} aria-expanded={scopePickerOpen} className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-slate-200 hover:border-indigo-500">
+                  Choose documents ({selectedDocumentIds.length || "All"})
+                </button>
+                {scopePickerOpen && <div className="absolute bottom-full left-0 z-20 mb-2 max-h-64 w-72 overflow-y-auto rounded-lg border border-slate-700 bg-slate-900 p-2 shadow-xl">
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <span className="text-xs font-medium text-slate-200">Available documents</span>
+                    <button type="button" onClick={() => setSelectedDocumentIds([])} className="text-[11px] text-indigo-300 hover:text-indigo-200">Clear</button>
+                  </div>
+                  <p className="px-1 pb-2 text-[11px] text-slate-500">{documents.filter((doc) => doc.status === "completed" && (!selectedCollectionId || doc.collection_id === selectedCollectionId)).length} indexed and ready to search</p>
+                  {documents.filter((doc) => !selectedCollectionId || doc.collection_id === selectedCollectionId).map((doc) => (
+                    <label key={doc.id} className="flex cursor-pointer items-start gap-2 rounded-md px-2 py-2 hover:bg-slate-800">
+                      <input type="checkbox" checked={selectedDocumentIds.includes(doc.id)} disabled={doc.status !== "completed"} onChange={(event) => setSelectedDocumentIds((current) => event.target.checked ? [...current, doc.id] : current.filter((id) => id !== doc.id))} className="mt-0.5 accent-indigo-500" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block break-words text-xs text-slate-200">{doc.original_name}</span>
+                        <span className={`mt-0.5 block text-[10px] ${doc.status === "completed" ? "text-teal-300" : doc.status === "failed" ? "text-red-300" : "text-amber-300"}`}>{doc.status === "completed" ? "Indexed and ready" : doc.status === "failed" ? `Indexing failed${doc.error_message ? `: ${doc.error_message}` : ""}` : "Still processing — not searchable yet"}</span>
+                      </span>
+                    </label>
+                  ))}
+                  {documents.filter((doc) => !selectedCollectionId || doc.collection_id === selectedCollectionId).length === 0 && <p className="px-2 py-4 text-center text-xs text-slate-500">No documents in this scope.</p>}
+                </div>}
+              </div>
+              {selectedDocumentIds.length > 0 && <div className="flex flex-wrap gap-1.5">{selectedDocumentIds.map((id) => { const doc = documents.find((item) => item.id === id); return doc ? <span key={id} className="inline-flex max-w-[220px] items-center gap-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-2 py-1 text-[11px] text-indigo-200"><span className="truncate">{doc.original_name}</span><button type="button" onClick={() => setSelectedDocumentIds((current) => current.filter((item) => item !== id))} aria-label={`Remove ${doc.original_name} from selection`} className="text-indigo-300 hover:text-white">×</button></span> : null; })}</div>}
+              <span className="text-[11px] text-slate-500">{documents.filter((doc) => doc.status === "completed" && (!selectedCollectionId || doc.collection_id === selectedCollectionId)).length} indexed documents</span>
               <label className="flex items-center gap-2">
                 Answer mode
                 <select
