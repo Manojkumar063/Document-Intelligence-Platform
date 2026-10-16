@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 from pydantic import ValidationError
 
-from app.core.security import create_access_token, decode_access_token, hash_password, verify_password
+from app.core.security import create_access_token, decode_access_token, verify_password
 from app.schemas.auth import LoginRequest
 from app.schemas.user import UserCreate
 
@@ -57,3 +57,15 @@ def test_access_token_does_not_allow_reserved_claim_override() -> None:
         {"sub": "attacker", "exp": (datetime.now(UTC) - timedelta(days=1)).timestamp()},
     )
     assert decode_access_token(token)["sub"] == "user-123"
+
+
+def test_cross_origin_mutation_is_rejected() -> None:
+    from fastapi.testclient import TestClient
+    from app.main import app
+
+    response = TestClient(app).post(
+        "/api/v1/auth/logout",
+        headers={"Origin": "https://attacker.example"},
+    )
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "CSRF_ORIGIN_REJECTED"
