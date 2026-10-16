@@ -25,5 +25,11 @@ class UserRepository:
     async def set_role(self, user_id: str, role: str) -> None:
         await self.col.update_one({"_id": user_id}, {"$set": {"role": role}})
 
+    async def set_active(self, user_id: str, is_active: bool) -> None:
+        await self.col.update_one(
+            {"_id": user_id},
+            {"$set": {"is_active": is_active, "updated_at": datetime.now(timezone.utc)}},
+        )
+
     async def list_all(self) -> list[User]:
         return [User.from_doc(d) async for d in self.col.find()]

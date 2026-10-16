@@ -37,6 +37,29 @@ async def update_user_role(
     return UserResponse.model_validate(target)
 
 
+@router.delete("/{target_user_id}", status_code=204)
+async def delete_user(
+    target_user_id: str,
+    user_id: CurrentAdminUserID,
+    db: DBSession,
+) -> None:
+    """Deactivate a user while preserving their documents and conversation history."""
+    if target_user_id == user_id:
+        raise ConflictError("You cannot delete your own account from user management")
+
+    repo = UserRepository(db)
+    target = await repo.get_by_id(target_user_id)
+    if not target:
+        raise NotFoundError("User", target_user_id)
+
+    if target.is_active and target.role == "admin":
+        active_admins = [user for user in await repo.list_all() if user.is_active and user.role == "admin"]
+        if len(active_admins) <= 1:
+            raise ConflictError("The last active admin cannot be deleted")
+
+    await repo.set_active(target_user_id, False)
+
+
 @router.get("/me", response_model=UserResponse)
 async def get_me(user_id: CurrentUserID, db: DBSession) -> UserResponse:
     user = await UserRepository(db).get_by_id(user_id)

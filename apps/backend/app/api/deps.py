@@ -17,6 +17,7 @@ _bearer = HTTPBearer(auto_error=False)
 
 async def get_current_user_id(
     credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+    db: DBSession,
     session_token: Annotated[str | None, Cookie(alias="rag_access_token")] = None,
 ) -> str:
     # Keep Bearer support for API clients; the browser uses only the HttpOnly cookie.
@@ -29,6 +30,9 @@ async def get_current_user_id(
     user_id: str | None = payload.get("sub")
     if not user_id:
         raise UnauthorizedError("Token subject missing")
+    user = await UserRepository(db).get_by_id(user_id)
+    if not user or not user.is_active:
+        raise UnauthorizedError("User account is inactive or unavailable")
     return user_id
 
 
