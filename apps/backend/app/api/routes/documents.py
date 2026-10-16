@@ -1,4 +1,5 @@
 from urllib.parse import quote
+import logging
 
 from fastapi import APIRouter, BackgroundTasks, UploadFile, File
 from fastapi.responses import Response
@@ -19,6 +20,8 @@ from app.schemas.document import (
 from app.services.document_service import DocumentService
 from app.services.storage import storage
 from app.utils.exceptions import ConflictError, ForbiddenError, NotFoundError, ValidationError
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 settings = get_settings()
@@ -202,9 +205,21 @@ async def delete_document(doc_id: str, user_id: CurrentAdminUserID, db: DBSessio
         version async for version in db["document_versions"].find({"document_id": doc_id})
     ]
     file_locations = {doc.file_path, *(version["file_path"] for version in versions)}
+
+    # Delete metadata even when the vector database or local/object storage is
+    # unavailable. Failed external cleanup is logged so it can be repaired
+    # without leaving an undeletable document in the UI.
+    try:
+        await delete_document_vectors(doc_id)
+    except Exception:
+        logger.exception("Could not delete vectors for document %s", doc_id)
+
     for location in file_locations:
-        await storage.delete(location)
-    await delete_document_vectors(doc_id)
+        try:
+            await storage.delete(location)
+        except Exception:
+            logger.exception("Could not delete stored file for document %s at %s", doc_id, location)
+
     await db["documents"].delete_one({"_id": doc_id})
     await db["document_chunks"].delete_many({"document_id": doc_id})
     await db["document_versions"].delete_many({"document_id": doc_id})
