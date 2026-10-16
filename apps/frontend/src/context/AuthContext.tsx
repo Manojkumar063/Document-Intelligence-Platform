@@ -4,8 +4,8 @@ import type { User } from "../types";
 
 interface AuthCtx {
   user: User | null;
-  setUser: (u: User) => void;
-  logout: () => void;
+  setUser: (u: User | null) => void;
+  logout: () => Promise<void>;
   loading: boolean;
 }
 
@@ -15,11 +15,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const logout = () => {
-    setUser(null);
-    void logoutRequest().catch((error: unknown) => {
-      console.error("Could not clear the shared sign-in session", String(error));
-    });
+  const logout = async () => {
+    try {
+      await logoutRequest();
+    } finally {
+      setUser(null);
+    }
   };
 
   useEffect(() => {
