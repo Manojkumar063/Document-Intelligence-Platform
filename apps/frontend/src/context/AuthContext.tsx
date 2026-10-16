@@ -4,8 +4,8 @@ import type { User } from "../types";
 
 interface AuthCtx {
   user: User | null;
-  setUser: (u: User) => void;
-  logout: () => void;
+  setUser: (u: User | null) => void;
+  logout: () => Promise<void>;
   loading: boolean;
 }
 
@@ -15,14 +15,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const logout = () => {
+  const logout = async () => {
+    await logoutRequest();
     setUser(null);
-    void logoutRequest().catch((error: unknown) => {
-      console.error("Could not clear the shared sign-in session", String(error));
-    });
   };
 
   useEffect(() => {
+    // Remove tokens persisted by older frontend versions; the browser now uses HttpOnly cookies.
+    window.localStorage.removeItem("token");
     let active = true;
     const refreshSession = async () => {
       try {

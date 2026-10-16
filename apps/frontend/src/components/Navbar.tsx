@@ -36,8 +36,13 @@ export function Navbar() {
     return () => { mounted = false; window.clearInterval(interval); };
   }, [user?.id]);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    try {
+      await logout();
+    } catch {
+      // Keep the user on the page if the server could not revoke the session.
+      return;
+    }
     navigate("/login");
   };
 

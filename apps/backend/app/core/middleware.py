@@ -38,3 +38,34 @@ class RequestIDMiddleware(BaseHTTPMiddleware):
                     "duration_ms": round((time.perf_counter() - started_at) * 1000, 2),
                 },
             )
+
+
+class SameOriginMutationMiddleware(BaseHTTPMiddleware):
+    """Reject cross-origin browser mutations before cookie authentication is used."""
+
+    _SAFE_METHODS = {"GET", "HEAD", "OPTIONS"}
+
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        origin = request.headers.get("origin")
+        from app.core.config import get_settings
+
+        allowed_origins = set(get_settings().cors_origins)
+        if (
+            request.method.upper() not in self._SAFE_METHODS
+            and origin is not None
+            and origin not in allowed_origins
+        ):
+            from fastapi.responses import JSONResponse
+
+            return JSONResponse(
+                status_code=403,
+                content={
+                    "error": {
+                        "code": "CSRF_ORIGIN_REJECTED",
+                        "message": "Request origin is not allowed",
+                    }
+                },
+            )
+        return await call_next(request)

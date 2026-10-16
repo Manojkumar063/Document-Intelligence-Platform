@@ -17,9 +17,8 @@ export default function LoginPage() {
     setError("");
     setLoading(true);
     try {
-      // login sets the rag_access_token cookie; pass the returned token
-      // directly to getMe to avoid a race before the cookie is available.
-      const { data: { access_token } } = await login(email, password);
+      // The browser sends the HttpOnly session cookie automatically.
+      await login(email, password);
       const { data: userData } = await getMe();
       setUser(userData);
       navigate("/chat");

@@ -3,18 +3,12 @@ import type { AdminStats, AgentMode, AppNotification, Collection, CollectionDeta
 
 const api = axios.create({ baseURL: "http://localhost:8000/api/v1", withCredentials: true });
 
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
-  return config;
-});
-
 // Auth
 export const register = (email: string, password: string, full_name: string) =>
-  api.post<{ access_token: string; token_type: string }>("/auth/register", { email, password, full_name });
+  api.post<User>("/auth/register", { email, password, full_name });
 
 export const login = (email: string, password: string) =>
-  api.post<{ access_token: string; token_type: string }>("/auth/login", { email, password });
+  api.post<{ authenticated: boolean }>("/auth/login", { email, password });
 export const logout = () => api.post("/auth/logout");
 
 // Users
