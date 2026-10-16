@@ -30,10 +30,10 @@ export default function LoginPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f6f8f7] text-slate-900">
+    <main className="min-h-screen bg-[#fff5f5] text-slate-900">
       <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-8">
         <header className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-700 text-white shadow-sm">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-700 text-white shadow-sm">
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 4.75A1.75 1.75 0 0 1 6.75 3H20v15H6.75A1.75 1.75 0 0 0 5 19.75v-15ZM5 19.75A1.75 1.75 0 0 1 6.75 18H20M8 7h8m-8 4h8m-8 4h5" />
             </svg>
@@ -46,28 +46,28 @@ export default function LoginPage() {
 
         <div className="flex flex-1 items-center justify-center py-10">
           <div className="grid w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_80px_-36px_rgba(15,23,42,0.24)] md:grid-cols-[0.9fr_1.1fr]">
-            <section className="relative hidden flex-col justify-between overflow-hidden bg-[#103d3a] p-9 text-white md:flex lg:p-11">
+            <section className="relative hidden flex-col justify-between overflow-hidden bg-[#641b1b] p-9 text-white md:flex lg:p-11">
               <div className="absolute -right-20 -top-16 h-64 w-64 rounded-full border border-white/10" />
               <div className="absolute -right-8 -top-4 h-40 w-40 rounded-full border border-white/10" />
               <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
-                <svg className="h-6 w-6 text-teal-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <svg className="h-6 w-6 text-red-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M5 4.75A1.75 1.75 0 0 1 6.75 3H20v15H6.75A1.75 1.75 0 0 0 5 19.75v-15ZM5 19.75A1.75 1.75 0 0 1 6.75 18H20M8 7h8m-8 4h8m-8 4h5" />
                 </svg>
               </div>
               <div className="relative my-12">
-                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-teal-200">Your knowledge, connected</p>
+                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-red-200">Your knowledge, connected</p>
                 <h2 className="max-w-xs text-3xl font-semibold leading-tight tracking-tight lg:text-4xl">Find answers in your documents.</h2>
-                <p className="mt-4 max-w-sm text-sm leading-6 text-teal-50/75">Bring your files together, ask better questions, and explore the information that matters.</p>
+                <p className="mt-4 max-w-sm text-sm leading-6 text-red-50/80">Bring your files together, ask better questions, and explore the information that matters.</p>
               </div>
-              <div className="relative flex items-center gap-2 text-xs text-teal-100/70">
-                <span className="h-2 w-2 rounded-full bg-teal-300" />
+              <div className="relative flex items-center gap-2 text-xs text-red-100/70">
+                <span className="h-2 w-2 rounded-full bg-red-300" />
                 Private workspace · Source-aware answers
               </div>
             </section>
 
             <section className="p-6 sm:p-9 lg:p-11">
               <div className="mb-8 md:mb-9">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Welcome back</p>
+                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-red-700">Welcome back</p>
                 <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Sign in to continue</h1>
                 <p className="mt-2 text-sm leading-6 text-slate-500">Access your documents and pick up where you left off.</p>
               </div>
@@ -88,7 +88,7 @@ export default function LoginPage() {
                     id="login-email" type="email" autoComplete="email" required value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-red-600 focus:ring-4 focus:ring-red-600/10"
                   />
                 </div>
 
@@ -98,13 +98,13 @@ export default function LoginPage() {
                     id="login-password" type="password" autoComplete="current-password" required value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Enter your password"
-                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10"
+                    className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-red-600 focus:ring-4 focus:ring-red-600/10"
                   />
                 </div>
 
                 <button
                   type="submit" disabled={loading}
-                  className="mt-2 flex w-full items-center justify-center rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-700/20 disabled:cursor-not-allowed disabled:opacity-60"
+                  className="mt-2 flex w-full items-center justify-center rounded-xl bg-red-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-red-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-red-700/20 disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {loading ? (
                     <span className="flex items-center justify-center gap-2">
@@ -120,7 +120,7 @@ export default function LoginPage() {
 
               <p className="mt-7 text-center text-sm text-slate-500">
                 New to RAG Workspace?{" "}
-                <Link to="/register" className="font-semibold text-teal-700 transition hover:text-teal-900">Create an account</Link>
+                <Link to="/register" className="font-semibold text-red-700 transition hover:text-red-900">Create an account</Link>
               </p>
               <p className="mt-8 border-t border-slate-100 pt-5 text-center text-xs text-slate-400">Your workspace, ready when you are.</p>
             </section>
