@@ -97,6 +97,7 @@ export default function ChatPage() {
   const selectionRef = useRef(0);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const requestControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -177,8 +178,10 @@ export default function ChatPage() {
     const selection = selectionRef.current;
     setInput("");
     setSending(true);
+    const controller = new AbortController();
+    requestControllerRef.current = controller;
     try {
-      const res = await sendMessage(conversationId, question, selectedCollectionId || undefined, agentMode);
+      const res = await sendMessage(conversationId, question, selectedCollectionId || undefined, agentMode, controller.signal);
       if (selectionRef.current === selection) setMessages((m) => [...m, res.data.message]);
       setConversations((current) => {
         const conversation = current.find((item) => item.id === conversationId);
@@ -186,8 +189,9 @@ export default function ChatPage() {
         const updated = { ...conversation, updated_at: new Date().toISOString() };
         return [updated, ...current.filter((item) => item.id !== conversationId)];
       });
-    } catch {
-      if (selectionRef.current === selection) {
+    } catch (error) {
+      const cancelled = error instanceof DOMException && error.name === "AbortError";
+      if (!cancelled && selectionRef.current === selection) {
         setMessages((m) => [
           ...m,
           {
@@ -199,8 +203,15 @@ export default function ChatPage() {
         ]);
       }
     } finally {
+      if (requestControllerRef.current === controller) requestControllerRef.current = null;
       setSending(false);
     }
+  };
+
+  const stopGeneration = () => {
+    requestControllerRef.current?.abort();
+    requestControllerRef.current = null;
+    setSending(false);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -555,15 +566,15 @@ export default function ChatPage() {
                 className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 resize-none focus:outline-none max-h-32"
                 style={{ lineHeight: "1.5" }}
               />
-              <button
-                onClick={handleSend}
-                disabled={sending || !input.trim()}
-                className="shrink-0 w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors"
-              >
-                <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
-                </svg>
-              </button>
+              {sending ? (
+                <button type="button" onClick={stopGeneration} className="shrink-0 h-8 px-3 flex items-center gap-2 bg-red-600 hover:bg-red-500 text-white text-xs font-medium rounded-lg" aria-label="Stop response" title="Stop response">
+                  <span className="inline-block h-2.5 w-2.5 rounded-sm bg-white" />Stop
+                </button>
+              ) : (
+                <button type="button" onClick={() => void handleSend()} disabled={!input.trim()} className="shrink-0 w-8 h-8 flex items-center justify-center bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg transition-colors" aria-label="Send message">
+                  <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" /></svg>
+                </button>
+              )}
             </div>
             <p className="text-slate-600 text-xs mt-2 text-center">Enter to send · Shift+Enter for new line</p>
           </div>
