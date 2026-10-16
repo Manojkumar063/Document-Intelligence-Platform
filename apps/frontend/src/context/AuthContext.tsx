@@ -16,14 +16,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const logout = async () => {
-    try {
-      await logoutRequest();
-    } finally {
-      setUser(null);
-    }
+    await logoutRequest();
+    setUser(null);
   };
 
   useEffect(() => {
+    // Remove tokens persisted by older frontend versions; the browser now uses HttpOnly cookies.
+    window.localStorage.removeItem("token");
     let active = true;
     const refreshSession = async () => {
       try {
