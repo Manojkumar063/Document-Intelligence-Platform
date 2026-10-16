@@ -68,12 +68,17 @@ async def logout(
     settings = get_settings()
     token = session_token or (credentials.credentials if credentials else None)
     if token:
-        payload = decode_access_token(token)
-        expires_at = payload.get("exp")
-        if not isinstance(expires_at, (int, float)):
-            raise UnauthorizedError("Token expiry missing")
-        ttl = max(int(expires_at - datetime.now(UTC).timestamp()), 1)
-        await blacklist_token(token, ttl)
+        try:
+            payload = decode_access_token(token)
+        except UnauthorizedError:
+            # An expired or malformed credential is already unusable; still clear its cookie.
+            payload = None
+        if payload is not None:
+            expires_at = payload.get("exp")
+            if not isinstance(expires_at, (int, float)):
+                raise UnauthorizedError("Token expiry missing")
+            ttl = max(int(expires_at - datetime.now(UTC).timestamp()), 1)
+            await blacklist_token(token, ttl)
     response.delete_cookie(
         key=COOKIE_NAME,
         httponly=True,
