@@ -60,7 +60,13 @@ async def _generate_answer(
         )
         for chunk in result.sources
     ]
-    return result.answer, sources
+    if not sources:
+        answer = (
+            "I couldn't find supporting information for this question in the available documents. "
+            "Try selecting a different collection, checking that your documents finished indexing, "
+            "or asking a more specific question. I don't want to guess without evidence from your files."
+        )
+    return result.answer if sources else answer, sources
 
 
 @router.post("", response_model=ConversationResponse, status_code=201)
