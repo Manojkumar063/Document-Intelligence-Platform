@@ -109,6 +109,20 @@ async def rename_conversation(
     return ConversationResponse.model_validate(conv)
 
 
+@router.patch("/{conv_id}/pin", response_model=ConversationResponse)
+async def pin_conversation(
+    conv_id: str, body: dict, user_id: CurrentUserID, db: DBSession
+) -> ConversationResponse:
+    pinned = body.get("pinned")
+    if not isinstance(pinned, bool):
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail="pinned must be a boolean")
+    conv = await ConversationRepository(db).set_pinned(conv_id, user_id, pinned)
+    if not conv:
+        raise NotFoundError("Conversation", conv_id)
+    return ConversationResponse.model_validate(conv)
+
+
 @router.post("/{conv_id}/messages", response_model=ChatResponse)
 async def chat(
     conv_id: str, body: ChatRequest, user_id: CurrentUserID, db: DBSession
