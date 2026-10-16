@@ -78,6 +78,8 @@ class Settings(BaseSettings):
             raise ValueError("S3_BUCKET is required when STORAGE_BACKEND=s3")
         if bool(self.aws_access_key_id) != bool(self.aws_secret_access_key):
             raise ValueError("AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY must be set together")
+        if self.environment.lower() == "production" and not self.redis_enabled:
+            raise ValueError("Redis must be enabled in production for session revocation and authentication rate limiting")
         if self.jwt_access_token_expire_minutes < 1:
             raise ValueError("JWT access-token lifetime must be at least one minute")
         if self.auth_rate_limit_requests < 1 or self.auth_rate_limit_window_seconds < 1:
