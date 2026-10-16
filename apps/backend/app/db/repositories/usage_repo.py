@@ -8,12 +8,13 @@ class UsageRepository:
     def __init__(self, db: AsyncIOMotorDatabase) -> None:
         self.col = db["usage_events"]
 
-    async def record(self, user_id: str, action: str) -> None:
+    async def record(self, user_id: str, action: str, **metadata: object) -> None:
         await self.col.insert_one(
             {
                 "_id": str(uuid.uuid4()),
                 "user_id": user_id,
                 "action": action,
+                **metadata,
                 "created_at": datetime.now(timezone.utc),
             }
         )
