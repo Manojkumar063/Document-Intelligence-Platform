@@ -7,6 +7,7 @@ import {
   listCollections,
   listConversations,
   openDocumentSource,
+  pinConversation,
   rateMessage,
   regenerateMessage,
   renameConversation,
@@ -18,15 +19,15 @@ function groupHistory(conversations: Conversation[], query: string) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const groups = new Map<string, Conversation[]>();
-  const filtered = conversations.filter((conversation) =>
-    conversation.title.toLowerCase().includes(query.trim().toLowerCase())
-  );
+  const filtered = conversations
+    .filter((conversation) => conversation.title.toLowerCase().includes(query.trim().toLowerCase()))
+    .sort((a, b) => Number(Boolean(b.pinned)) - Number(Boolean(a.pinned)));
 
   for (const conversation of filtered) {
     const updated = new Date(conversation.updated_at || conversation.created_at);
     updated.setHours(0, 0, 0, 0);
     const daysAgo = Math.floor((today.getTime() - updated.getTime()) / 86_400_000);
-    const label = daysAgo <= 0 ? "Today" : daysAgo === 1 ? "Yesterday" : daysAgo < 7 ? "Previous 7 days" : "Older";
+    const label = conversation.pinned ? "Pinned" : daysAgo <= 0 ? "Today" : daysAgo === 1 ? "Yesterday" : daysAgo < 7 ? "Previous 7 days" : "Older";
     groups.set(label, [...(groups.get(label) ?? []), conversation]);
   }
 
@@ -85,6 +86,7 @@ export default function ChatPage() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [pinningId, setPinningId] = useState<string | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameTitle, setRenameTitle] = useState("");
@@ -186,7 +188,10 @@ export default function ChatPage() {
       setConversations((current) => {
         const conversation = current.find((item) => item.id === conversationId);
         if (!conversation) return current;
-        const updated = { ...conversation, updated_at: new Date().toISOString() };
+        const generatedTitle = conversation.title === "New Chat" || conversation.title === "New Conversation"
+          ? (question.length > 52 ? question.slice(0, 49).trimEnd() + "..." : question)
+          : conversation.title;
+        const updated = { ...conversation, title: generatedTitle, updated_at: new Date().toISOString() };
         return [updated, ...current.filter((item) => item.id !== conversationId)];
       });
     } catch (error) {
@@ -299,6 +304,19 @@ export default function ChatPage() {
     }
   };
 
+  const handlePin = async (conversation: Conversation) => {
+    setPinningId(conversation.id);
+    setHistoryError("");
+    try {
+      const response = await pinConversation(conversation.id, !conversation.pinned);
+      setConversations((current) => current.map((item) => item.id === conversation.id ? response.data : item));
+    } catch (err: any) {
+      setHistoryError(err.response?.data?.error?.message || "Could not update pinned conversation");
+    } finally {
+      setPinningId(null);
+    }
+  };
+
   const beginRename = (conversation: Conversation) => {
     setHistoryError("");
     setRenameId(conversation.id);
@@ -369,7 +387,12 @@ export default function ChatPage() {
           {loadingHistory ? (
             <p className="text-slate-500 text-xs text-center py-6">Loading history…</p>
           ) : conversations.length === 0 ? (
-            <p className="text-slate-600 text-xs text-center py-6">No conversations yet</p>
+            <div className="flex flex-col items-center px-4 py-8 text-center">
+              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-slate-800 text-slate-500"><svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M8 10h8m-8 4h5m-9 6 1.5-4A8 8 0 1 1 20 16.5" /></svg></div>
+              <p className="text-xs font-medium text-slate-300">Your conversations will appear here</p>
+              <p className="mt-1 text-[11px] leading-5 text-slate-500">Start a chat to ask questions about your documents.</p>
+              <button type="button" onClick={() => void newConversation()} disabled={creating} className="mt-3 text-xs font-medium text-indigo-300 hover:text-indigo-200 disabled:opacity-50">Start your first chat</button>
+            </div>
           ) : historyGroups.length === 0 ? (
             <p className="text-slate-500 text-xs text-center py-6">No matches found</p>
           ) : historyGroups.map(([label, group]) => (
@@ -412,6 +435,9 @@ export default function ChatPage() {
                           <span className="truncate text-xs">{conversation.title}</span>
                         </button>
                         <div className="flex shrink-0 items-center sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
+                          <button type="button" onClick={() => void handlePin(conversation)} disabled={pinningId === conversation.id} title={conversation.pinned ? "Unpin conversation" : "Pin conversation"} aria-label={conversation.pinned ? `Unpin ${conversation.title}` : `Pin ${conversation.title}`} className={`rounded p-1 disabled:opacity-40 ${conversation.pinned ? "text-teal-300" : "text-slate-500 hover:text-white"}`}>
+                            <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m16 3 5 5-4 1-4 4v5l-2 2-2-7-7-2 2-2h5l4-4 3-2Z" /></svg>
+                          </button>
                           <button type="button" onClick={() => beginRename(conversation)} title="Rename conversation" aria-label={`Rename ${conversation.title}`} className="rounded p-1 text-slate-500 hover:text-white">
                             <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m16.862 4.487 1.687-1.687a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M19.5 7.125 16.875 4.5" /></svg>
                           </button>
