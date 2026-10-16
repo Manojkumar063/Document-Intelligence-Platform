@@ -61,6 +61,7 @@ class Conversation:
             "title": self.title,
             "created_at": self.created_at,
             "updated_at": self.updated_at,
+            "pinned": self.pinned,
         }
 
     @staticmethod
