@@ -79,6 +79,9 @@ export const getConversation = (id: string) =>
 export const renameConversation = (id: string, title: string) =>
   api.patch<Conversation>(`/conversations/${encodeURIComponent(id)}`, { title });
 
+export const pinConversation = (id: string, pinned: boolean) =>
+  api.patch<Conversation>(`/conversations/${encodeURIComponent(id)}/pin`, { pinned });
+
 export const sendMessage = (
   conv_id: string,
   message: string,
