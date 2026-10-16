@@ -501,25 +501,36 @@ export default function ChatPage() {
                         Research agent
                       </span>
                     )}
-                    {msg.sources && msg.sources.length > 0 && (
-                      <div className="w-full space-y-2">
-                        {msg.sources.map((source, index) => (
-                          <article key={source.chunk_id} className="max-w-xl rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-3">
-                            <div className="flex items-center justify-between gap-3">
-                              <p className="min-w-0 truncate text-xs font-semibold text-slate-200">
-                                <span className="mr-2 rounded bg-slate-800 px-1.5 py-0.5 text-[10px] text-indigo-300">[{index + 1}]</span>
-                                {source.filename}
-                              </p>
-                              {source.page != null && <span className="shrink-0 text-[11px] text-slate-500">Page {source.page}</span>}
-                            </div>
-                            {source.snippet && <blockquote className="mt-2 line-clamp-4 border-l-2 border-indigo-500/70 pl-3 text-xs leading-relaxed text-slate-400">“{source.snippet}”</blockquote>}
-                            <button type="button" onClick={() => void handleOpenSource(source)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-indigo-300 hover:text-indigo-200">
-                              <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M14 3h7v7m-1-6L10 14M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
-                              Open Source
-                            </button>
-                          </article>
-                        ))}
-                      </div>
+                    {msg.role === "assistant" && !msg.id.startsWith("error-") && (
+                      msg.sources && msg.sources.length > 0 ? (
+                        <section className="w-full max-w-xl space-y-2" aria-label="Answer sources">
+                          <div className="flex items-center gap-2 px-1 text-xs font-medium text-teal-300">
+                            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="m5 12 4 4L19 6" /></svg>
+                            Sources used ({msg.sources.length})
+                          </div>
+                          {msg.sources.map((source, index) => (
+                            <article key={source.chunk_id} className="rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-3">
+                              <div className="flex items-start justify-between gap-3">
+                                <p className="min-w-0 break-words text-xs font-semibold text-slate-200">
+                                  <span className="mr-2 rounded bg-teal-500/10 px-1.5 py-0.5 text-[10px] text-teal-300">[{index + 1}]</span>
+                                  {source.filename || "Source document"}
+                                </p>
+                                {source.page != null && <span className="shrink-0 text-[11px] text-slate-400">Page {source.page}</span>}
+                              </div>
+                              {source.snippet && <blockquote className="mt-2 line-clamp-4 border-l-2 border-teal-500/60 pl-3 text-xs leading-relaxed text-slate-400">“{source.snippet}”</blockquote>}
+                              <button type="button" onClick={() => void handleOpenSource(source)} className="mt-3 inline-flex items-center gap-1.5 text-xs font-medium text-teal-300 hover:text-teal-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400 rounded">
+                                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M14 3h7v7m-1-6L10 14M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" /></svg>
+                                Open source document
+                              </button>
+                            </article>
+                          ))}
+                        </section>
+                      ) : (
+                        <div role="note" className="flex max-w-xl items-start gap-2 rounded-lg border border-amber-500/25 bg-amber-500/5 px-3 py-2.5 text-xs leading-5 text-amber-200/90">
+                          <svg className="mt-0.5 h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M12 9v3m0 4h.01M10.3 3.86 2.9 16.7A1.5 1.5 0 0 0 4.2 19h15.6a1.5 1.5 0 0 0 1.3-2.3L13.7 3.86a2 2 0 0 0-3.4 0Z" /></svg>
+                          <span>No supporting document passages were retrieved for this answer. Treat it as unverified; try narrowing the search scope or asking about a specific uploaded document.</span>
+                        </div>
+                      )
                     )}
                     {msg.role === "assistant" && !msg.id.startsWith("error-") && (
                       <div className="flex flex-wrap items-center gap-1 px-1 pt-1">
