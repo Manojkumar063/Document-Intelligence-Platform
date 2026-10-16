@@ -134,6 +134,13 @@ async def chat(
 
     if body.collection_id and not await CollectionRepository(db).get_by_id(body.collection_id):
         raise NotFoundError("Collection", body.collection_id)
+    if conv.title.strip().lower() in {"new chat", "new conversation"}:
+        generated_title = " ".join(body.message.split()).strip()
+        if len(generated_title) > 52:
+            generated_title = generated_title[:49].rstrip() + "..."
+        if generated_title:
+            await repo.update_title(conv_id, generated_title)
+
     await repo.add_message(
         conv_id,
         role="user",
