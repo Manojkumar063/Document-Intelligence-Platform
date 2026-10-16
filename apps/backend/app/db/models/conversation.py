@@ -51,6 +51,7 @@ class Conversation:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
+    pinned: bool = False
     messages: list[Message] = field(default_factory=list)
 
     def to_doc(self) -> dict:
