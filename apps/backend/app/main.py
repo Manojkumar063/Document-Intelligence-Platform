@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.config import get_settings
 from app.core.logging import get_logger, setup_logging
-from app.core.middleware import RequestIDMiddleware
+from app.core.middleware import RequestIDMiddleware, SameOriginMutationMiddleware
 from app.db.database import close_db, get_database
 from app.db.redis_client import connect_redis, close_redis
 from app.db.vector_store import close_vector_store
@@ -65,6 +65,7 @@ def create_app() -> FastAPI:
     )
 
     app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(SameOriginMutationMiddleware)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=settings.cors_origins,
