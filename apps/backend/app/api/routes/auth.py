@@ -8,7 +8,7 @@ from app.api.deps import DBSession
 from app.core.config import get_settings
 from app.core.security import decode_access_token
 from app.db.redis_client import blacklist_token, check_auth_rate_limit
-from app.schemas.auth import LoginRequest, SessionResponse
+from app.schemas.auth import LoginRequest, SessionResponse, TokenResponse
 from app.schemas.user import UserCreate, UserResponse
 from app.services.auth_service import AuthService
 from app.utils.exceptions import UnauthorizedError
@@ -41,8 +41,8 @@ async def register(body: UserCreate, request: Request, db: DBSession) -> UserRes
     return UserResponse.model_validate(user)
 
 
-@router.post("/login", response_model=SessionResponse)
-async def login(body: LoginRequest, request: Request, db: DBSession, response: Response) -> SessionResponse:
+@router.post("/login", response_model=SessionResponse | TokenResponse)
+async def login(body: LoginRequest, request: Request, db: DBSession, response: Response) -> SessionResponse | TokenResponse:
     await enforce_auth_rate_limit(request, str(body.email))
     token = await AuthService(db).login(email=str(body.email).strip().lower(), password=body.password)
     settings = get_settings()
@@ -55,6 +55,10 @@ async def login(body: LoginRequest, request: Request, db: DBSession, response: R
         samesite="lax",
         path="/",
     )
+    # Browser requests include Origin and receive cookie-only auth. Keep the token
+    # response for non-browser API clients (for example, command-line integrations).
+    if request.headers.get("origin") is None:
+        return TokenResponse(access_token=token)
     return SessionResponse()
 
 
