@@ -1,4 +1,5 @@
 from typing import Literal
+from time import perf_counter
 
 from fastapi import APIRouter
 
@@ -48,7 +49,6 @@ async def _generate_answer(
             user_id=user_id,
             collection_id=collection_id,
         )
-    await UsageRepository(db).record(user_id, "chat_query")
     sources = [
         SourceReference(
             chunk_id=chunk.chunk_id,
@@ -120,8 +120,29 @@ async def chat(
         content=body.message,
         collection_id=body.collection_id,
     )
-    answer, sources = await _generate_answer(
-        body.message, body.collection_id, user_id, db, body.agent_mode
+    started_at = perf_counter()
+    try:
+        answer, sources = await _generate_answer(
+            body.message, body.collection_id, user_id, db, body.agent_mode
+        )
+    except Exception as exc:
+        elapsed_ms = round((perf_counter() - started_at) * 1000)
+        await UsageRepository(db).record(
+            user_id, "chat_query_failed",
+            conversation_id=conv_id,
+            latency_ms=elapsed_ms,
+            error_type=type(exc).__name__,
+            agent_mode=body.agent_mode,
+        )
+        raise
+    elapsed_ms = round((perf_counter() - started_at) * 1000)
+    await UsageRepository(db).record(
+        user_id, "chat_query",
+        conversation_id=conv_id,
+        latency_ms=elapsed_ms,
+        source_count=len(sources),
+        answer_chars=len(answer),
+        agent_mode=body.agent_mode,
     )
 
     assistant_msg = await repo.add_message(
