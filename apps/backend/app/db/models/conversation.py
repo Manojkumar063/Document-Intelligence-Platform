@@ -72,5 +72,6 @@ class Conversation:
             title=doc.get("title", "New Conversation"),
             created_at=doc.get("created_at", datetime.now(timezone.utc)),
             updated_at=doc.get("updated_at", datetime.now(timezone.utc)),
+            pinned=doc.get("pinned", False),
             messages=messages or [],
         )
