@@ -32,6 +32,13 @@ class ConversationRepository:
             {"$set": {"title": title, "updated_at": datetime.now(timezone.utc)}},
         )
 
+    async def set_pinned(self, conv_id: str, user_id: str, pinned: bool) -> Conversation | None:
+        await self.convs.update_one(
+            {"_id": conv_id, "user_id": user_id},
+            {"$set": {"pinned": pinned, "updated_at": datetime.now(timezone.utc)}},
+        )
+        return await self.get_by_id(conv_id, user_id)
+
     async def add_message(
         self,
         conversation_id: str,
