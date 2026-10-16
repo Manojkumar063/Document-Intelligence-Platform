@@ -455,8 +455,31 @@ export default function ChatPage() {
               <p className="text-slate-600 text-sm mt-1">Create a new chat or select one from the sidebar</p>
             </div>
           ) : messages.length === 0 && !sending ? (
-            <div className="h-full flex flex-col items-center justify-center text-center">
-              <p className="text-slate-500 text-sm">Ask anything about your uploaded documents</p>
+            <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col items-center justify-center py-8 text-center">
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-teal-500/20 bg-teal-500/10">
+                <svg className="h-7 w-7 text-teal-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M8 5.5A2.5 2.5 0 0 1 10.5 3h7A2.5 2.5 0 0 1 20 5.5v11a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 8 16.5v-11ZM4 7v12a2 2 0 0 0 2 2h9M11 8h5m-5 4h5m-5 4h3" />
+                </svg>
+              </div>
+              <h2 className="text-xl font-semibold tracking-tight text-slate-100 sm:text-2xl">What would you like to explore?</h2>
+              <p className="mt-2 max-w-lg text-sm leading-6 text-slate-400">Ask questions, discover insights, and understand your documents with AI.</p>
+              <div className="mt-7 grid w-full grid-cols-1 gap-3 text-left sm:grid-cols-2">
+                {[
+                  { title: "Summarize my documents", description: "Get the key points and main takeaways.", prompt: "Summarize my documents. Highlight the key points and main takeaways.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M7 3.75h7l4 4V20a.75.75 0 0 1-.75.75h-9.5A.75.75 0 0 1 7 20V3.75ZM14 4v4h4M10 12h5m-5 3h5" /> },
+                  { title: "Compare two documents", description: "Find similarities and important differences.", prompt: "Compare two documents in my available files. Highlight the key similarities and differences, and cite the sources.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M8 7H4m0 0 2.5-2.5M4 7l2.5 2.5M16 17h4m0 0-2.5-2.5M20 17l-2.5 2.5M6 12h12" /> },
+                  { title: "Find key risks and action items", description: "Identify concerns, deadlines, and next steps.", prompt: "Review my available documents and identify key risks, deadlines, and action items. Cite the supporting sources.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M12 3.5 21 20H3L12 3.5ZM12 9v4m0 3h.01" /> },
+                  { title: "Explain a topic from my files", description: "Understand a concept using your sources.", prompt: "Explain an important topic covered in my documents in simple terms, using examples and citing the sources.", icon: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.7} d="M9.5 18h5m-4.5 3h4m-2-18a6 6 0 0 0-3.8 10.64c.9.72 1.3 1.45 1.3 2.36h5c0-.91.4-1.64 1.3-2.36A6 6 0 0 0 12 3Z" /> },
+                ].map((item) => (
+                  <button key={item.title} type="button" onClick={() => { setInput(item.prompt); inputRef.current?.focus(); }}
+                    className="group flex min-h-[112px] items-start gap-3 rounded-xl border border-slate-700/80 bg-slate-900/70 p-4 text-left transition-colors hover:border-teal-500/50 hover:bg-slate-800/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-400">
+                    <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-teal-500/10 text-teal-300 transition-colors group-hover:bg-teal-500/15">
+                      <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">{item.icon}</svg>
+                    </span>
+                    <span className="min-w-0"><span className="block text-sm font-medium text-slate-100">{item.title}</span><span className="mt-1.5 block text-xs leading-5 text-slate-400">{item.description}</span></span>
+                  </button>
+                ))}
+              </div>
+              <p className="mt-5 text-xs text-slate-500">Choose a suggestion to add it to your message, then send when you’re ready.</p>
             </div>
           ) : (
             <>
