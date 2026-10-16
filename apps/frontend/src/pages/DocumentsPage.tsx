@@ -56,6 +56,7 @@ export default function DocumentsPage() {
   const [uploadFileName, setUploadFileName] = useState("");
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [retryingId, setRetryingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [sharingId, setSharingId] = useState<string | null>(null);
   const [versionTargetId, setVersionTargetId] = useState<string | null>(null);
   const [versionsDocument, setVersionsDocument] = useState<Document | null>(null);
@@ -127,9 +128,27 @@ export default function DocumentsPage() {
     if (file) handleFile(file);
   };
 
-  const handleDelete = async (id: string) => {
-    await deleteDocument(id);
-    setDocs((d) => d.filter((doc) => doc.id !== id));
+  const handleDelete = async (doc: Document) => {
+    const confirmed = window.confirm(`Delete "${doc.original_name}"? This removes the document and its version history.`);
+    if (!confirmed) return;
+
+    setDeletingId(doc.id);
+    setError("");
+    try {
+      await deleteDocument(doc.id);
+      setDocs((current) => current.filter((item) => item.id !== doc.id));
+    } catch (err: any) {
+      setError(err.response?.data?.error?.message || `Could not delete "${doc.original_name}". Please try again.`);
+      // Refresh from the server so the UI always reflects persisted state.
+      try {
+        const response = await listDocuments();
+        setDocs(response.data);
+      } catch {
+        // Preserve the original delete error when refresh also fails.
+      }
+    } finally {
+      setDeletingId(null);
+    }
   };
 
   const handleRetry = async (id: string) => {
@@ -352,10 +371,12 @@ export default function DocumentsPage() {
                   <div className="flex shrink-0 items-center gap-1">
                     <button type="button" onClick={() => { setVersionTargetId(doc.id); versionFileRef.current?.click(); }} className="rounded-md border border-slate-700 px-2 py-1 text-xs text-slate-400 hover:border-indigo-500 hover:text-white" title="Upload a new version">New version</button>
                     <button
-                      onClick={() => handleDelete(doc.id)}
-                      className="text-slate-600 hover:text-red-400 transition-colors p-1 rounded"
-                      title="Delete"
+                      onClick={() => void handleDelete(doc)}
+                      disabled={deletingId === doc.id}
+                      className="text-slate-600 hover:text-red-400 transition-colors p-1 rounded disabled:cursor-wait disabled:opacity-50"
+                      title={deletingId === doc.id ? "Deleting document…" : "Delete"}
                       aria-label={`Delete ${doc.original_name}`}
+                      aria-busy={deletingId === doc.id}
                     >
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 01-1 1v3M4 7h16" />
