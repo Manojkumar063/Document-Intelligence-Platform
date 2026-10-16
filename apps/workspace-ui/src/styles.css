@@ -524,3 +524,58 @@ h1 { margin-bottom: 7px; color: #f1f5f9; font-size: clamp(24px, 2.7vw, 31px); fo
   .project-card, .new-project-card { min-height: 160px; }
   .page-footer { gap: 8px; flex-direction: column; }
 }
+
+
+/* Workspace sidebar and dashboard usability improvements */
+.sidebar { transition: width .18s ease, padding .18s ease; }
+.sidebar-collapse-button {
+  position: absolute; top: 18px; right: -12px; z-index: 20;
+  display: grid; width: 24px; height: 24px; place-items: center;
+  border: 1px solid var(--line); border-radius: 50%;
+  color: var(--muted); background: var(--paper); font-size: 18px; line-height: 1;
+  box-shadow: 0 3px 10px rgb(0 0 0 / .18);
+}
+.sidebar-collapse-button:hover { color: var(--ink); border-color: var(--accent); }
+.nav-item { position: relative; }
+.nav-item.active {
+  color: #5eead4;
+  background: linear-gradient(90deg, rgb(20 184 166 / .2), rgb(20 184 166 / .08));
+  box-shadow: inset 3px 0 #2dd4bf, inset 0 0 0 1px rgb(45 212 191 / .12);
+}
+.nav-item.active svg { color: #5eead4; }
+.knowledge-link { flex-shrink: 0; }
+.sidebar-profile { flex-shrink: 0; }
+.stat-card-interactive {
+  width: 100%; min-width: 0; color: inherit; text-align: left; font: inherit;
+  cursor: pointer; transition: transform .16s ease, border-color .16s ease, background .16s ease;
+}
+.stat-card-interactive:hover { transform: translateY(-2px); border-color: rgb(45 212 191 / .45); }
+.stat-card-interactive:focus-visible, .sidebar-collapse-button:focus-visible, .nav-item:focus-visible {
+  outline: 2px solid #2dd4bf; outline-offset: 3px;
+}
+.stat-description { display: block; margin-top: 7px; color: var(--muted); font-size: 10px; line-height: 1.5; }
+.stat-open-hint { display: block; margin-top: 9px; color: #2dd4bf; font-size: 10px; font-weight: 600; opacity: .85; }
+.stat-card-interactive:hover .stat-open-hint { opacity: 1; }
+.app-shell.sidebar-collapsed .sidebar { width: 76px; padding-right: 10px; padding-left: 10px; }
+.app-shell.sidebar-collapsed .main-area { margin-left: 76px; }
+.app-shell.sidebar-collapsed .brand { justify-content: center; padding-right: 0; padding-left: 0; }
+.app-shell.sidebar-collapsed .sidebar-label-text { display: none !important; }
+.app-shell.sidebar-collapsed .workspace-switcher { justify-content: center; padding: 8px 4px; margin-top: 34px; }
+.app-shell.sidebar-collapsed .workspace-avatar { width: 35px; }
+.app-shell.sidebar-collapsed .switcher-chevron { display: none; }
+.app-shell.sidebar-collapsed .nav-label { overflow: hidden; height: 1px; margin: 8px 0; }
+.app-shell.sidebar-collapsed .nav-item, .app-shell.sidebar-collapsed .project-nav-item { justify-content: center; gap: 0; padding: 0; }
+.app-shell.sidebar-collapsed .nav-count { position: absolute; top: 1px; right: 2px; width: 16px; height: 16px; font-size: 9px; }
+.app-shell.sidebar-collapsed .project-nav-heading { justify-content: center; margin-right: 0; }
+.app-shell.sidebar-collapsed .knowledge-link { justify-content: center; padding: 8px 4px; }
+.app-shell.sidebar-collapsed .knowledge-link > svg { display: none; }
+.app-shell.sidebar-collapsed .sidebar-profile { flex-direction: column; gap: 7px; padding-right: 0; padding-left: 0; }
+.app-shell.sidebar-collapsed .logout-button { display: grid; width: 100%; place-items: center; }
+[data-theme="light"] .nav-item.active { color: #0f766e; background: linear-gradient(90deg, rgb(15 118 110 / .16), rgb(15 118 110 / .06)); box-shadow: inset 3px 0 #0f766e, inset 0 0 0 1px rgb(15 118 110 / .12); }
+[data-theme="light"] .stat-description { color: #64748b; }
+[data-theme="light"] .stat-open-hint { color: #0f766e; }
+@media (max-width: 760px) {
+  .sidebar-collapse-button { top: 12px; }
+  .app-shell.sidebar-collapsed .sidebar { width: 64px; padding-right: 7px; padding-left: 7px; }
+  .app-shell.sidebar-collapsed .main-area { margin-left: 64px; }
+}
