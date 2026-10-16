@@ -50,7 +50,7 @@ async def get_evaluation_dashboard(
     p95 = latencies[min(len(latencies) - 1, int(len(latencies) * 0.95))] if latencies else None
     feedback_pipeline = [
         {"$match": {"role": "assistant", "feedback": {"$in": ["up", "down"]}, "created_at": {"$gte": since}}},
-        {"$group": {"_id": "$feedback", "count": {"$sum": 1}},
+        {"$group": {"_id": "$feedback", "count": {"$sum": 1}}},
     ]
     feedback = {row["_id"]: row["count"] async for row in db["messages"].aggregate(feedback_pipeline)}
     history_cursor = events.find({"action": "rag_evaluation_run", "created_at": {"$gte": since}}).sort("created_at", -1).limit(50)
