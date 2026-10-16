@@ -19,7 +19,7 @@ export default function LoginPage() {
     try {
       // login sets the rag_access_token cookie; pass the returned token
       // directly to getMe to avoid a race before the cookie is available.
-      const { data: { access_token } } = await login(email, password);
+      await login(email, password);
       const { data: userData } = await getMe();
       setUser(userData);
       navigate("/chat");
