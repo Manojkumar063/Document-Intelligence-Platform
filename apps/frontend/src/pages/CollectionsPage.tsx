@@ -50,7 +50,15 @@ export default function CollectionsPage() {
     } else {
       listCollections()
         .then((response) => setCollections(response.data))
-        .catch(() => setError("Could not load collections"))
+        .catch((err: any) => {
+          const detail = err.response?.data?.error?.message;
+          const status = err.response?.status;
+          setError(
+            detail
+              ? `Could not load collections: ${detail}`
+              : `Could not load collections (HTTP ${status ?? "network error"}). Check that the backend is running and you are signed in.`
+          );
+        })
         .finally(() => setLoading(false));
     }
   }, [collectionId, isAdmin]);
