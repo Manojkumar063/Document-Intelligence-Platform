@@ -78,10 +78,17 @@ export const getConversation = (id: string) =>
 export const renameConversation = (id: string, title: string) =>
   api.patch<Conversation>(`/conversations/${encodeURIComponent(id)}`, { title });
 
-export const sendMessage = (conv_id: string, message: string, collection_id?: string, agent_mode: AgentMode = "chat") =>
+export const sendMessage = (
+  conv_id: string,
+  message: string,
+  collection_id?: string,
+  agent_mode: AgentMode = "chat",
+  signal?: AbortSignal,
+) =>
   api.post<{ conversation_id: string; message: Message; sources: SourceReference[] }>(
-    `/conversations/${conv_id}/messages`,
-    { message, collection_id, agent_mode }
+    `/conversations/${encodeURIComponent(conv_id)}/messages`,
+    { message, collection_id, agent_mode },
+    { signal },
   );
 
 export const regenerateMessage = (conversationId: string, messageId: string) =>
