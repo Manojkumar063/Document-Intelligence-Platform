@@ -7,6 +7,7 @@ import { ThemeProvider } from "./context/ThemeContext";
 import ChatPage from "./pages/ChatPage";
 import CollectionsPage from "./pages/CollectionsPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import AdminSectionPage from "./pages/AdminSectionPage";
 import DocumentsPage from "./pages/DocumentsPage";
 import LoginPage from "./pages/LoginPage";
 import ProfilePage from "./pages/ProfilePage";
@@ -23,6 +24,14 @@ export default function App() {
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/admin" element={<ProtectedRoute adminOnly><AdminDashboardPage /></ProtectedRoute>} />
+            <Route path="/admin/analytics" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
+            <Route path="/admin/retrieval" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
+            <Route path="/admin/generation" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
+            <Route path="/admin/data" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
+            <Route path="/admin/feedback" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
+            <Route path="/admin/alerts" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
+            <Route path="/admin/integrations" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
+            <Route path="/admin/settings" element={<ProtectedRoute adminOnly><AdminSectionPage /></ProtectedRoute>} />
             <Route path="/documents" element={<ProtectedRoute><DocumentsPage /></ProtectedRoute>} />
             <Route path="/collections" element={<ProtectedRoute><CollectionsPage /></ProtectedRoute>} />
             <Route path="/collections/:collectionId" element={<ProtectedRoute><CollectionsPage /></ProtectedRoute>} />
