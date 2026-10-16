@@ -52,6 +52,7 @@ export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props
   const [activityLoading, setActivityLoading] = useState(false);
   const [activityError, setActivityError] = useState("");
   const [activeNav, setActiveNav] = useState<NavItem>("Overview");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<TaskFilters>(emptyFilters);
   const [modal, setModal] = useState<{ mode: "task" | "project"; task?: Task; project?: Project } | null>(null);
@@ -262,7 +263,7 @@ export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props
   }
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
       <Sidebar
         user={user}
         projects={projects}
@@ -274,6 +275,8 @@ export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props
         workspace={workspace}
         onInvite={() => setAccessModalOpen(true)}
         onSwitchWorkspace={(id) => void changeWorkspace(id)}
+        collapsed={sidebarCollapsed}
+        onToggleCollapsed={() => setSidebarCollapsed((value) => !value)}
       />
       <main className="main-area">
         <Topbar
@@ -310,7 +313,7 @@ export default function Workspace({ user, onLogout, dark, onToggleTheme }: Props
             <ActivityFeed events={activity} loading={activityLoading} error={activityError} />
           ) : (
             <>
-              <StatsGrid projects={projects} tasks={tasks} members={members} />
+              <StatsGrid projects={projects} tasks={tasks} members={members} onNavigate={setActiveNav} />
               <ProjectsSection
                 projects={projects}
                 tasks={tasks}
