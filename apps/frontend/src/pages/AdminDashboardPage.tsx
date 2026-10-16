@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { getAdminStats } from "../api/client";
 import type { AdminStats, PipelineStage } from "../types";
 
@@ -209,17 +209,18 @@ function UserFeedbackDonut({ total, positive, neutral, negative }: {
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 const NAV_ITEMS = [
   { icon: "⊞", label: "Overview", to: "/admin", active: true },
-  { icon: "📊", label: "Query Analytics", to: "/admin", active: false },
-  { icon: "🔍", label: "Retrieval Performance", to: "/admin", active: false },
-  { icon: "⚡", label: "Generation Quality", to: "/admin", active: false },
-  { icon: "🗄️", label: "Data & Indexing", to: "/documents", active: false },
-  { icon: "⭐", label: "Feedback & Evaluation", to: "/admin", active: false },
-  { icon: "🔔", label: "Alerts", to: "/admin", active: false },
-  { icon: "🔗", label: "Integrations", to: "/admin", active: false },
-  { icon: "⚙️", label: "Settings", to: "/admin", active: false },
+  { icon: "📊", label: "Query Analytics", to: "/admin/analytics" },
+  { icon: "🔍", label: "Retrieval Performance", to: "/admin/retrieval" },
+  { icon: "⚡", label: "Generation Quality", to: "/admin/generation" },
+  { icon: "🗄️", label: "Data & Indexing", to: "/admin/data" },
+  { icon: "⭐", label: "Feedback & Evaluation", to: "/admin/feedback" },
+  { icon: "🔔", label: "Alerts", to: "/admin/alerts" },
+  { icon: "🔗", label: "Integrations", to: "/admin/integrations" },
+  { icon: "⚙️", label: "Settings", to: "/admin/settings" },
 ];
 
 function Sidebar({ user }: { user: { full_name: string; email: string } | null }) {
+  const location = useLocation();
   return (
     <aside className="w-52 flex-shrink-0 flex flex-col bg-slate-900 border-r border-slate-700/60 min-h-screen">
       <div className="flex items-center gap-2.5 px-4 py-4 border-b border-slate-700/60">
@@ -229,7 +230,7 @@ function Sidebar({ user }: { user: { full_name: string; email: string } | null }
       <nav className="flex-1 px-2 py-3 space-y-0.5">
         {NAV_ITEMS.map(item => (
           <Link key={item.label} to={item.to}
-            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors ${item.active ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}>
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs transition-colors ${location.pathname === item.to ? "bg-teal-700 text-white" : "text-slate-400 hover:text-white hover:bg-slate-800"}`}>
             <span className="text-sm">{item.icon}</span>
             {item.label}
           </Link>
