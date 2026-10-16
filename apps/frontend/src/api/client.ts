@@ -106,3 +106,33 @@ export const openDocumentSource = (documentId: string) =>
   api.get<Blob>(`/documents/${encodeURIComponent(documentId)}/file`, { responseType: "blob" });
 
 export const deleteConversation = (id: string) => api.delete(`/conversations/${encodeURIComponent(id)}`);
+
+
+export interface RAGEvaluationHistoryItem {
+  id: string;
+  created_at: string | null;
+  case_count: number;
+  precision_at_k: number | null;
+  recall_at_k: number | null;
+  answer_relevance: number | null;
+  faithfulness: number | null;
+}
+export interface RAGEvaluationDashboard {
+  days: number;
+  successful_queries: number;
+  failed_queries: number;
+  average_latency_ms: number | null;
+  p95_latency_ms: number | null;
+  prompt_tokens: number;
+  completion_tokens: number;
+  positive_feedback: number;
+  negative_feedback: number;
+  precision_at_k: number | null;
+  recall_at_k: number | null;
+  answer_relevance: number | null;
+  faithfulness: number | null;
+  quality_metrics_note: string;
+  history: RAGEvaluationHistoryItem[];
+}
+export const getRAGEvaluation = (days = 30) =>
+  api.get<RAGEvaluationDashboard>(`/admin/evaluation?days=${days}`);
