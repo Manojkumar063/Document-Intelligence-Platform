@@ -36,6 +36,7 @@ def _build_llm() -> ChatOpenAI:
     )
 
 
+
 async def _general_answer(question: str) -> str:
     llm = _build_llm()
     response = await llm.ainvoke([
