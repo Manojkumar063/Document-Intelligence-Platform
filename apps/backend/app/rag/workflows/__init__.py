@@ -27,6 +27,10 @@ class ResearchPlan(BaseModel):
     queries: list[str] = Field(max_length=2)
 
 
+class QueryRewrite(BaseModel):
+    query: str = Field(min_length=1, max_length=1000)
+
+
 def _build_llm() -> ChatOpenAI:
     return ChatOpenAI(
         model=settings.llm_model,
@@ -35,6 +39,37 @@ def _build_llm() -> ChatOpenAI:
         openai_api_key=settings.llm_api_key,
     )
 
+
+
+async def rewrite_query(question: str) -> str:
+    """Rewrite a user question into a standalone retrieval query.
+
+    If rewriting fails or returns an empty result, preserve the original question so
+    this optional enhancement never prevents normal chat from working.
+    """
+    original = question.strip()
+    if not original:
+        return question
+
+    try:
+        llm = _build_llm()
+        rewriter = llm.with_structured_output(QueryRewrite)
+        result = await rewriter.ainvoke([
+            SystemMessage(
+                content=(
+                    "Rewrite the user question as one concise, standalone search query "
+                    "for retrieving relevant passages from documents. Resolve references "
+                    "using the conversation context provided in the question, preserve "
+                    "important names, dates, identifiers, and constraints, and do not "
+                    "answer the question. Return only the rewritten query."
+                )
+            ),
+            HumanMessage(content=original),
+        ])
+        rewritten = result.query.strip()
+        return rewritten or original
+    except Exception:
+        return original
 
 
 async def _general_answer(question: str) -> str:
@@ -59,8 +94,9 @@ async def run_rag(
     cached = await cache_get("rag", cache_key)
     if cached:
         return RAGResult(answer=cached["answer"], sources=[])
+    retrieval_query = await rewrite_query(question)
     try:
-        chunks = await retrieve(question, db, user_id, collection_id=collection_id)
+        chunks = await retrieve(retrieval_query, db, user_id, collection_id=collection_id)
         chunks = await rerank(question, chunks)
     except Exception:
         chunks = []
