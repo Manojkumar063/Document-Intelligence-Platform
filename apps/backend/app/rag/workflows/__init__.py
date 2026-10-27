@@ -36,6 +36,32 @@ def _build_llm() -> ChatOpenAI:
     )
 
 
+def _serialize_sources(chunks: list[RetrievedChunk]) -> list[dict]:
+    return [
+        {
+            "chunk_id": chunk.chunk_id,
+            "document_id": chunk.document_id,
+            "content": chunk.content,
+            "similarity": chunk.similarity,
+            "page_number": chunk.page_number,
+            "metadata": chunk.metadata,
+        }
+        for chunk in chunks
+    ]
+
+
+def _deserialize_sources(value: object) -> list[RetrievedChunk] | None:
+    """Return cached source chunks, or None for legacy/malformed cache entries."""
+    if not isinstance(value, list) or not value:
+        return None
+    try:
+        chunks = [RetrievedChunk(**item) for item in value if isinstance(item, dict)]
+        if len(chunks) != len(value):
+            return None
+        return chunks
+    except (TypeError, ValueError):
+        return None
+
 
 async def _general_answer(question: str) -> str:
     llm = _build_llm()
@@ -57,8 +83,13 @@ async def run_rag(
 
     cache_key = f"{user_id}:{collection_id}:{question}"
     cached = await cache_get("rag", cache_key)
-    if cached:
-        return RAGResult(answer=cached["answer"], sources=[])
+    if isinstance(cached, dict) and isinstance(cached.get("answer"), str):
+        cached_sources = _deserialize_sources(cached.get("sources"))
+        # Old cache entries only stored the answer. They cannot be returned safely because
+        # the API uses source presence to distinguish grounded answers from unsupported ones.
+        if cached_sources:
+            return RAGResult(answer=cached["answer"], sources=cached_sources)
+
     try:
         chunks = await retrieve(question, db, user_id, collection_id=collection_id)
         chunks = await rerank(question, chunks)
@@ -66,7 +97,14 @@ async def run_rag(
         chunks = []
 
     if not chunks:
-        return RAGResult(answer=await _general_answer(question), sources=[])
+        return RAGResult(
+            answer=(
+                "I couldn't find supporting information for this question in the available documents. "
+                "Try selecting a different collection, checking that your documents finished indexing, "
+                "or asking a more specific question."
+            ),
+            sources=[],
+        )
 
     context = "\n\n---\n\n".join(
         f"[{c.metadata.get('filename', 'document')}]\n{c.content}" for c in chunks
@@ -78,7 +116,11 @@ async def run_rag(
     ]
     response = await llm.ainvoke(messages)
     result = RAGResult(answer=str(response.content), sources=chunks)
-    await cache_set("rag", cache_key, {"answer": result.answer})
+    await cache_set(
+        "rag",
+        cache_key,
+        {"answer": result.answer, "sources": _serialize_sources(result.sources)},
+    )
     return result
 
 
@@ -165,7 +207,14 @@ async def run_research(
     chunks = chunks[: settings.top_k]
 
     if not chunks:
-        return RAGResult(answer=await _general_answer(question), sources=[])
+        return RAGResult(
+            answer=(
+                "I couldn't find supporting information for this question in the available documents. "
+                "Try selecting a different collection, checking that your documents finished indexing, "
+                "or asking a more specific question."
+            ),
+            sources=[],
+        )
 
     context = "\n\n---\n\n".join(
         f"[{index}] Source: {chunk.metadata.get('filename', 'document')}"
