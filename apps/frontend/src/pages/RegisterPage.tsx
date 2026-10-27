@@ -30,66 +30,68 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen bg-[#f6f8f7] text-slate-900">
-      <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-5 py-6 sm:px-8">
-        <header className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-teal-700 text-white shadow-sm">
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 4.75A1.75 1.75 0 0 1 6.75 3H20v15H6.75A1.75 1.75 0 0 0 5 19.75v-15ZM5 19.75A1.75 1.75 0 0 1 6.75 18H20M8 7h8m-8 4h8m-8 4h5" /></svg>
+    <main className="auth-shell">
+      <div className="auth-container">
+        <div className="auth-brand">
+          <div className="auth-brand-mark" aria-hidden="true">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 4.75A1.75 1.75 0 0 1 6.75 3H20v15H6.75A1.75 1.75 0 0 0 5 19.75v-15ZM5 19.75A1.75 1.75 0 0 1 6.75 18H20M8 7h8m-8 4h8m-8 4h5" />
+            </svg>
           </div>
           <div>
-            <p className="text-sm font-semibold tracking-tight text-slate-900">RAG Workspace</p>
-            <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.18em] text-slate-500">Document intelligence</p>
-          </div>
-        </header>
-
-        <div className="flex flex-1 items-center justify-center py-10">
-          <div className="grid w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-[0_24px_80px_-36px_rgba(15,23,42,0.24)] md:grid-cols-[0.9fr_1.1fr]">
-            <section className="relative hidden flex-col justify-between overflow-hidden bg-[#103d3a] p-9 text-white md:flex lg:p-11">
-              <div className="absolute -right-20 -top-16 h-64 w-64 rounded-full border border-white/10" />
-              <div className="absolute -right-8 -top-4 h-40 w-40 rounded-full border border-white/10" />
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/20 bg-white/10">
-                <svg className="h-6 w-6 text-teal-100" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.6} d="M5 4.75A1.75 1.75 0 0 1 6.75 3H20v15H6.75A1.75 1.75 0 0 0 5 19.75v-15ZM5 19.75A1.75 1.75 0 0 1 6.75 18H20M8 7h8m-8 4h8m-8 4h5" /></svg>
-              </div>
-              <div className="relative my-12">
-                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-teal-200">Your knowledge, connected</p>
-                <h2 className="max-w-xs text-3xl font-semibold leading-tight tracking-tight lg:text-4xl">A smarter home for your documents.</h2>
-                <p className="mt-4 max-w-sm text-sm leading-6 text-teal-50/75">Create your workspace, bring your files together, and find answers with confidence.</p>
-              </div>
-              <div className="relative flex items-center gap-2 text-xs text-teal-100/70"><span className="h-2 w-2 rounded-full bg-teal-300" />Private workspace · Source-aware answers</div>
-            </section>
-
-            <section className="p-6 sm:p-9 lg:p-11">
-              <div className="mb-8">
-                <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-teal-700">Get started</p>
-                <h1 className="text-3xl font-semibold tracking-tight text-slate-900">Create your account</h1>
-                <p className="mt-2 text-sm leading-6 text-slate-500">Set up your details to start exploring your documents.</p>
-              </div>
-
-              {error && <div role="alert" className="mb-5 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"><svg className="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>{error}</div>}
-
-              <form onSubmit={handleSubmit} className="space-y-5">
-                <div className="space-y-2">
-                  <label htmlFor="register-name" className="block text-sm font-medium text-slate-700">Full name</label>
-                  <input id="register-name" type="text" autoComplete="name" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10" />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="register-email" className="block text-sm font-medium text-slate-700">Email address</label>
-                  <input id="register-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10" />
-                </div>
-                <div className="space-y-2">
-                  <label htmlFor="register-password" className="block text-sm font-medium text-slate-700">Password</label>
-                  <input id="register-password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 hover:border-slate-400 focus:border-teal-600 focus:ring-4 focus:ring-teal-600/10" />
-                </div>
-                <button type="submit" disabled={loading} className="mt-2 flex w-full items-center justify-center rounded-xl bg-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-teal-800 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-700/20 disabled:cursor-not-allowed disabled:opacity-60">
-                  {loading ? <span className="flex items-center justify-center gap-2"><svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" /></svg>Creating account…</span> : "Create account"}
-                </button>
-              </form>
-
-              <p className="mt-7 text-center text-sm text-slate-500">Already have an account? <Link to="/login" className="font-semibold text-teal-700 transition hover:text-teal-900">Sign in</Link></p>
-              <p className="mt-8 border-t border-slate-100 pt-5 text-center text-xs text-slate-400">Your workspace, ready when you are.</p>
-            </section>
+            <p className="auth-brand-title">Document Intelligence</p>
+            <p className="auth-brand-caption">Knowledge workspace</p>
           </div>
         </div>
+
+        <section className="auth-card" aria-labelledby="register-title">
+          <div className="mb-7">
+            <p className="auth-eyebrow">Get started</p>
+            <h1 id="register-title" className="auth-title">Create your account</h1>
+            <p className="auth-description">Set up your account to start working with your organization's documents.</p>
+          </div>
+
+          {error && (
+            <div role="alert" className="auth-error">
+              <svg className="h-4 w-4 shrink-0" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+              </svg>
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <label htmlFor="register-name" className="auth-label">Full name</label>
+              <input id="register-name" type="text" autoComplete="name" required value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="Your full name" className="auth-input" />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="register-email" className="auth-label">Work email</label>
+              <input id="register-email" type="email" autoComplete="email" required value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@company.com" className="auth-input" />
+            </div>
+            <div className="space-y-2">
+              <label htmlFor="register-password" className="auth-label">Password</label>
+              <input id="register-password" type="password" autoComplete="new-password" required value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Create a password" className="auth-input" />
+            </div>
+            <button type="submit" disabled={loading} className="auth-submit">
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                  </svg>
+                  Creating account…
+                </span>
+              ) : "Create account"}
+            </button>
+          </form>
+
+          <p className="auth-footer">
+            Already have an account? <Link to="/login" className="auth-link">Sign in</Link>
+          </p>
+        </section>
+
+        <p className="auth-legal">Secure access to your organization's knowledge.</p>
       </div>
     </main>
   );
