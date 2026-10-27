@@ -97,7 +97,14 @@ async def run_rag(
         chunks = []
 
     if not chunks:
-        return RAGResult(answer=await _general_answer(question), sources=[])
+        return RAGResult(
+            answer=(
+                "I couldn't find supporting information for this question in the available documents. "
+                "Try selecting a different collection, checking that your documents finished indexing, "
+                "or asking a more specific question."
+            ),
+            sources=[],
+        )
 
     context = "\n\n---\n\n".join(
         f"[{c.metadata.get('filename', 'document')}]\n{c.content}" for c in chunks
