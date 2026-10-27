@@ -46,6 +46,8 @@ export function Navbar() {
     navigate("/login");
   };
 
+  if (pathname === "/login" || pathname === "/register") return null;
+
   const navLink = (to: string, label: string) => (
     <Link
       to={to}
