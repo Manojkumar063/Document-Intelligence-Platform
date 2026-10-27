@@ -49,10 +49,8 @@ export function Navbar() {
   const navLink = (to: string, label: string) => (
     <Link
       to={to}
-      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-        pathname === to
-          ? "bg-teal-700 text-white shadow-sm"
-          : "text-slate-600 hover:bg-teal-50 hover:text-teal-800"
+      className={`app-nav-link px-3 py-1.5 text-sm font-medium transition-colors ${
+        pathname === to ? "is-active" : ""
       }`}
     >
       {label}
@@ -60,14 +58,14 @@ export function Navbar() {
   );
 
   return (
-    <nav className="sticky top-0 z-40 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
+    <nav className="app-navbar sticky top-0 z-40 flex items-center justify-between border-b border-slate-200 bg-white/95 px-4 py-3 shadow-sm backdrop-blur sm:px-6">
       <Link to="/" className="flex items-center gap-2.5">
         <div className="flex h-9 w-9 items-center justify-center rounded-xl border border-teal-200 bg-teal-50 text-teal-700">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M5 4.75A1.75 1.75 0 0 1 6.75 3H20v15H6.75A1.75 1.75 0 0 0 5 19.75v-15ZM5 19.75A1.75 1.75 0 0 1 6.75 18H20M8 7h8m-8 4h8m-8 4h5" />
           </svg>
         </div>
-        <span className="text-sm font-semibold tracking-tight text-slate-900">RAG Workspace</span>
+        <span className="app-brand-title text-sm font-semibold tracking-tight text-slate-900">Document Intelligence</span>
       </Link>
 
       {user && (
