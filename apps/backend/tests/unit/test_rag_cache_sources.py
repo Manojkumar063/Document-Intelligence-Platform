@@ -75,3 +75,21 @@ async def test_legacy_answer_only_cache_is_not_returned_as_grounded(
     assert cached_payload["answer"] == result.answer
     assert cached_payload["sources"][0]["chunk_id"] == chunk.chunk_id
     assert cached_payload["sources"][0]["page_number"] == 3
+
+
+@pytest.mark.asyncio
+async def test_rag_does_not_call_llm_when_retrieval_finds_no_evidence(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("app.rag.workflows.is_rate_limited", AsyncMock(return_value=False))
+    monkeypatch.setattr("app.rag.workflows.cache_get", AsyncMock(return_value=None))
+    monkeypatch.setattr("app.rag.workflows.retrieve", AsyncMock(return_value=[]))
+    llm = Mock()
+    llm.ainvoke = AsyncMock()
+    monkeypatch.setattr("app.rag.workflows._build_llm", lambda: llm)
+
+    result = await run_rag("What is the leave policy?", AsyncMock(), "user-1", "collection-1")
+
+    assert not result.sources
+    assert "couldn't find supporting information" in result.answer
+    llm.ainvoke.assert_not_awaited()
